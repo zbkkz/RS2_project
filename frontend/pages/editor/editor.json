@@ -1,0 +1,9 @@
+{
+  "navigationStyle": "custom",
+  "disableScroll": true,
+  "renderer": "webview",
+  "backgroundColor": "#000000",
+  "usingComponents": {
+    "angle-ruler": "/components/angle-ruler/angle-ruler"
+  }
+}

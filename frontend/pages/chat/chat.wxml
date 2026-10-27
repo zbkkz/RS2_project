@@ -1,0 +1,167 @@
+<!--pages/chat/chat.wxml
+  「AI 智能处理」对话页（见 README 7.4 / 13 章）。
+  顶部按参考图**只保留「新对话」一个图标**（头像与衣架图标已按要求删除），
+  历史会话改由「长按 ⊕」打开（见 chat.js 的 onHistory）。
+  注意：Skyline 下页面级滚动不生效，消息区必须由 <scroll-view type="list"> 承载。 -->
+<view class="chat-page">
+  <!-- 顶部导航：固定不滚动，内边距避开右上角胶囊按钮 -->
+  <view class="chat-head" style="padding-top: {{topPadding}}px;">
+    <view class="head-btn" bindtap="goBack" hover-class="head-hover">
+      <image class="head-ic" src="{{ICON.back}}" mode="aspectFit" />
+    </view>
+    <view class="head-btn" bindtap="onNewChat" bindlongpress="onHistory" hover-class="head-hover">
+      <image class="head-ic" src="{{ICON.newChat}}" mode="aspectFit" />
+    </view>
+  </view>
+  <text class="head-tip">内容由AI生成</text>
+
+  <!-- 消息区 -->
+  <scroll-view
+    class="chat-scroll"
+    scroll-y
+    type="list"
+    scroll-into-view="{{scrollInto}}"
+    scroll-with-animation
+  >
+    <!-- 空态：引导 + 三条示例（示例点一下即填入输入框） -->
+    <view wx:if="{{!messages.length && !pending}}" class="empty">
+      <view class="empty-badge">小修</view>
+      <text class="empty-title">我是小修，你的 AI 修图助手</text>
+      <text class="empty-sub">说说想怎么修这张照片：我会给建议，也能直接帮你修</text>
+      <view class="chips">
+        <view
+          class="chip"
+          wx:for="{{examples}}"
+          wx:key="*this"
+          data-text="{{item}}"
+          bindtap="onExample"
+          hover-class="chip-hover"
+        >{{item}}</view>
+      </view>
+      <text class="empty-hint">长按右上角「＋」可回看历史对话</text>
+    </view>
+
+    <!-- 消息列表：用户消息右对齐（紫色气泡，带图时图片一起显示）；AI 左对齐（纯文字 + 紫色竖条 + 小修标签） -->
+    <block wx:for="{{messages}}" wx:key="key">
+      <view class="row {{item.role === 'user' ? 'row-user' : 'row-ai'}}" id="msg-{{item.key}}">
+        <text wx:if="{{item.role !== 'user'}}" class="ai-name">小修</text>
+        <view
+          class="bubble {{item.role === 'user' ? 'bubble-user' : 'bubble-ai'}} {{item.failed ? 'bubble-failed' : ''}}"
+          data-key="{{item.key}}"
+          bindtap="onBubbleTap"
+        >
+          <text wx:if="{{item.content}}" class="bubble-text">{{item.content}}</text>
+          <!-- 图片：用户上传的原图与 AI 出图结果都显示；点图可放大预览 -->
+          <image
+            wx:if="{{item.fullImage}}"
+            class="bubble-img"
+            src="{{item.fullImage}}"
+            mode="widthFix"
+            data-src="{{item.fullImage}}"
+            catchtap="onPreview"
+          />
+          <!-- 保存 / 继续编辑只给 AI 出图结果（用户上传的原图不需要这两个动作） -->
+          <view wx:if="{{item.role !== 'user' && item.type === 'image'}}" class="img-actions">
+            <view class="mini-btn" data-src="{{item.imagePath}}" catchtap="onSaveWork">保存到作品</view>
+            <view class="mini-btn ghost" data-src="{{item.imagePath}}" catchtap="onEditImage">去编辑</view>
+          </view>
+          <text wx:if="{{item.failed}}" class="fail-tip">发送失败，点击重试</text>
+        </view>
+      </view>
+    </block>
+
+    <!-- 等待态：三点跳动 + 进度文案（出图慢时文案会自动变成「正在生成图片」） -->
+    <view wx:if="{{pending}}" class="row" id="msg-pending">
+      <text class="ai-name">小修</text>
+      <view class="bubble bubble-ai">
+        <view class="dots">
+          <view class="dot"></view>
+          <view class="dot"></view>
+          <view class="dot"></view>
+        </view>
+        <text class="pending-hint">{{pendingHint}}</text>
+      </view>
+    </view>
+
+    <view class="scroll-bottom"></view>
+  </scroll-view>
+
+  <!-- 录音提示条：只在录音时出现，位于输入栏之上 -->
+  <view wx:if="{{recording}}" class="rec-tip">
+    <view class="rec-wave"></view>
+    <text class="rec-text">正在录音 {{recordSec}}s，点击麦克风结束</text>
+  </view>
+
+  <!-- 上传失败提示：必须显式可见 —— 否则用户会以为图已附上，而服务端只看到「没带图」 -->
+  <view wx:if="{{draftError}}" class="upload-tip" bindtap="onRetryUpload">
+    <text class="upload-tip-text">{{draftError}}，点这里或缩略图重试</text>
+  </view>
+
+  <!-- 底部输入栏：相册 + 输入框 + 麦克风（有内容时右侧变成发送） -->
+  <view class="input-bar">
+    <view class="pick-btn" bindtap="onPickImage" hover-class="pick-hover">
+      <image class="bar-ic" src="{{ICON.image}}" mode="aspectFit" />
+    </view>
+
+    <!-- 已选图片的缩略图：上传中转圈、失败可点击重试、可移除。
+         角标绝对定位 + 正 z-index，避免被输入框/相邻元素盖住（见 README 11.3 第 17 条） -->
+    <view wx:if="{{draftImage}}" class="thumb" bindtap="onRetryUpload">
+      <image class="thumb-img {{draftUploading ? 'thumb-dim' : ''}}" src="{{draftImage}}" mode="aspectFill" />
+      <view wx:if="{{draftUploading}}" class="thumb-mask">
+        <view class="thumb-spin"></view>
+      </view>
+      <view wx:if="{{draftError}}" class="thumb-mask thumb-err">
+        <text class="thumb-err-text">重试</text>
+      </view>
+      <view class="thumb-del" catchtap="onRemoveDraft">
+        <image class="del-ic" src="{{ICON.close}}" mode="aspectFit" />
+      </view>
+    </view>
+
+    <input
+      class="chat-input"
+      value="{{draftText}}"
+      placeholder="发送消息或上传图片"
+      placeholder-class="ph"
+      confirm-type="send"
+      cursor-spacing="24"
+      disabled="{{recording}}"
+      bindinput="onInput"
+      bindconfirm="onSend"
+    />
+
+    <view wx:if="{{draftText || draftImage}}" class="send-btn" bindtap="onSend" hover-class="send-hover">发送</view>
+    <view wx:else class="mic-btn {{recording ? 'mic-on' : ''}}" bindtap="onMicTap" hover-class="mic-hover">
+      <image class="bar-ic" src="{{recording ? ICON.micOn : ICON.mic}}" mode="aspectFit" />
+      <view wx:if="{{recording}}" class="mic-ring"></view>
+    </view>
+  </view>
+
+  <!-- 历史会话弹层（长按「新对话」打开）：可切换回看、可删除 -->
+  <view wx:if="{{historyShow}}" class="sheet-mask" bindtap="onCloseHistory"></view>
+  <view wx:if="{{historyShow}}" class="sheet">
+    <view class="sheet-bar"></view>
+    <view class="sheet-head">
+      <text class="sheet-title">历史对话</text>
+      <text class="sheet-close" bindtap="onCloseHistory">关闭</text>
+    </view>
+    <scroll-view class="sheet-scroll" scroll-y type="list">
+      <view wx:if="{{!historyItems.length}}" class="sheet-empty">还没有历史对话</view>
+      <view
+        class="sheet-row {{item.id === sessionId ? 'sheet-row-on' : ''}}"
+        wx:for="{{historyItems}}"
+        wx:key="id"
+        data-id="{{item.id}}"
+        bindtap="onOpenHistory"
+      >
+        <view class="sheet-info">
+          <text class="sheet-row-title">{{item.title || '未命名对话'}}</text>
+          <text class="sheet-row-time">{{item.updated_at}} · {{item.message_count || 0}} 条</text>
+        </view>
+        <view class="sheet-del" data-id="{{item.id}}" catchtap="onDeleteHistory">
+          <image class="del-ic" src="{{ICON.del}}" mode="aspectFit" />
+        </view>
+      </view>
+    </scroll-view>
+  </view>
+</view>

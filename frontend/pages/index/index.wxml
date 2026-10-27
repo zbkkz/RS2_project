@@ -1,0 +1,226 @@
+<!--pages/index/index.wxml-->
+<view class="glow glow-a"></view>
+<view class="glow glow-b"></view>
+
+<view class="page-root {{entrance ? 'entrance' : ''}}" style="padding-top: {{topPadding}}px; padding-bottom: {{tabBarHeight}}px;">
+  <!-- 底部让位由 .page-root 的 padding-bottom（JS 算出的导航栏真实占位）完成，滚动区 flex:1 自动避开 -->
+  <scroll-view class="scrollarea" scroll-y type="list">
+    <view class="page">
+
+      <!-- 顶部：品牌（枯笔艺术字 PNG，横向单行）+ 通知/设置 -->
+      <view class="header">
+        <!-- 品牌标：由 backend/generate_brand.py 生成的横向艺术字图。
+             用 <image> 而非文本，一是拿到枯笔手写字形，二是图不会折行
+             （此前 "Hi"/".cut" 两段文本在窄屏上被挤成竖排，见 README M52） -->
+        <image class="logo-img" src="/assets/brand/brand.png" mode="heightFix" />
+        <view class="header-actions">
+          <!-- 通知：打开「通知」弹层（本地静态公告），有未读时铃铛右上角带小红点 -->
+          <view class="icon-btn" bindtap="onOpenNotice" hover-class="btn-hover">
+            <image class="icon-btn-img" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZmlsbD0iI2ZmZmZmZiIgZD0iTTEyIDIyYzEuMSAwIDItLjkgMi0yaC00YzAgMS4xLjg5IDIgMiAyem02LTZ2LTVjMC0zLjA3LTEuNjQtNS42NC00LjUtNi4zMlY0YzAtLjgzLS42Ny0xLjUtMS41LTEuNXMtMS41LjY3LTEuNSAxLjV2LjY4QzcuNjMgNS4zNiA2IDcuOTIgNiAxMXY1bC0yIDJ2MWgxNnYtMWwtMi0yeiIvPjwvc3ZnPg==" mode="aspectFit" />
+            <view class="icon-dot" wx:if="{{noticeUnread}}"></view>
+          </view>
+          <!-- 设置：打开「设置」弹层（清除缓存 / 用户协议 / 隐私政策 / 退出登录） -->
+          <view class="icon-btn" bindtap="onOpenSetting" hover-class="btn-hover">
+            <image class="icon-btn-img" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZmlsbD0iI2ZmZmZmZiIgZD0iTTE5LjE0IDEyLjk0Yy4wNC0uMy4wNi0uNjEuMDYtLjk0IDAtLjMyLS4wMi0uNjQtLjA3LS45NGwyLjAzLTEuNThjLjE4LS4xNC4yMy0uNDEuMTItLjYxbC0xLjkyLTMuMzJjLS4xMi0uMjItLjM3LS4yOS0uNTktLjIybC0yLjM5Ljk2Yy0uNS0uMzgtMS4wMy0uNy0xLjYyLS45NGwtLjM2LTIuNTRjLS4wNC0uMjQtLjI0LS40MS0uNDgtLjQxaC0zLjg0Yy0uMjQgMC0uNDMuMTctLjQ3LjQxbC0uMzYgMi41NGMtLjU5LjI0LTEuMTMuNTctMS42Mi45NGwtMi4zOS0uOTZjLS4yMi0uMDgtLjQ3IDAtLjU5LjIyTDIuNzQgOC44N2MtLjEyLjIxLS4wOC40Ny4xMi42MWwyLjAzIDEuNThjLS4wNS4zLS4wOS42My0uMDkuOTRzLjAyLjY0LjA3Ljk0bC0yLjAzIDEuNThjLS4xOC4xNC0uMjMuNDEtLjEyLjYxbDEuOTIgMy4zMmMuMTIuMjIuMzcuMjkuNTkuMjJsMi4zOS0uOTZjLjUuMzggMS4wMy43IDEuNjIuOTRsLjM2IDIuNTRjLjA1LjI0LjI0LjQxLjQ4LjQxaDMuODRjLjI0IDAgLjQ0LS4xNy40Ny0uNDFsLjM2LTIuNTRjLjU5LS4yNCAxLjEzLS41NiAxLjYyLS45NGwyLjM5Ljk2Yy4yMi4wOC40NyAwIC41OS0uMjJsMS45Mi0zLjMyYy4xMi0uMjIuMDctLjQ3LS4xMi0uNjFsLTIuMDEtMS41OHpNMTIgMTUuNmMtMS45OCAwLTMuNi0xLjYyLTMuNi0zLjZzMS42Mi0zLjYgMy42LTMuNiAzLjYgMS42MiAzLjYgMy42LTEuNjIgMy42LTMuNiAzLjZ6Ii8+PC9zdmc+" mode="aspectFit" />
+          </view>
+        </view>
+      </view>
+
+
+      <!-- 核心入口：拍照 + 导入 + AI 能力 -->
+      <view class="hero-grid">
+        <view class="card hero-main" bindtap="onTakePhoto" hover-class="card-hover">
+          <view class="hero-camera">
+            <view class="hero-eye">
+              <view class="hero-pupil">
+                <view class="hero-shine"></view>
+                <view class="hero-glint"></view>
+              </view>
+            </view>
+          </view>
+          <text class="hero-title">拍照</text>
+          <text class="hero-sub">相机拍摄</text>
+        </view>
+        <view class="hero-side">
+          <!-- data-ability：带 AI 能力标识进入编辑页，编辑页会直达对应 AI 功能栏（见 editor.js consumeAiEntry） -->
+          <view class="card hero-item" wx:for="{{aiList}}" wx:key="key" wx:if="{{index < 2}}" data-ability="{{item.key}}" bindtap="goEditWithImage" hover-class="card-hover">
+            <image class="card-bg" wx:if="{{item.bg}}" src="{{item.bg}}" mode="aspectFill" />
+            <image class="hero-item-icon" src="{{item.icon}}" mode="aspectFit" />
+            <text class="hero-item-title">{{item.name}}</text>
+            <text class="ai-tag">AI</text>
+          </view>
+        </view>
+      </view>
+      <view class="hero-row">
+        <view class="card hero-item" bindtap="onImport" hover-class="card-hover">
+          <image class="card-bg" src="{{importBg}}" mode="aspectFill" />
+          <image class="hero-item-icon" src="{{importIcon}}" mode="aspectFit" />
+          <text class="hero-item-title">导入</text>
+          <text class="ai-tag">相册</text>
+        </view>
+        <view class="card hero-item" data-ability="beauty" bindtap="goEditWithImage" hover-class="card-hover">
+          <image class="card-bg" wx:if="{{beautyCard.bg}}" src="{{beautyCard.bg}}" mode="aspectFill" />
+          <image class="hero-item-icon" src="{{beautyCard.icon}}" mode="aspectFit" />
+          <text class="hero-item-title">{{beautyCard.name}}</text>
+          <text class="ai-tag">AI</text>
+        </view>
+      </view>
+
+      <!-- 工具集 + 全部工具面板 -->
+      <view class="block-beauty">
+        <view class="section-header">
+          <view class="section-title-wrap">
+            <image class="section-icon" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZmlsbD0iI2ZmYjZlMSIgZD0iTTcgMTRjLTEuNjYgMC0zIDEuMzQtMyAzIDAgMS4zMS0xLjE2IDItMiAyIC45MiAxLjIyIDIuNDkgMiA0IDIgMi4yMSAwIDQtMS43OSA0LTQgMC0xLjY2LTEuMzQtMy0zLTN6bTEzLjcxLTkuMzdsLTEuMzQtMS4zNGMtLjM5LS4zOS0xLjAyLS4zOS0xLjQxIDBMOSAxMi4yNSAxMS43NSAxNWw4Ljk2LTguOTZjLjM5LS4zOS4zOS0xLjAyIDAtMS40MXoiLz48L3N2Zz4=" mode="aspectFit" />
+            <text class="section-title">工具</text>
+          </view>
+          <text class="section-extra" bindtap="onOpenPanel" hover-class="btn-hover">全部 ›</text>
+        </view>
+        <view class="beauty-row">
+          <!-- data-ability：磨皮 / 美白 与「AI 美颜」是同一能力（后端 beauty 指令就是磨皮+美白），
+               带上它即可像 AI 卡片一样直达编辑页的 AI 美颜功能栏，不必进页后再找工具；
+               data-panel：贴纸库 / 贴纸叠加 落到编辑页的「贴纸」底部面板（见 M54 ——
+               四个入口各自都有明确落点，不存在「点了进编辑页还要自己找工具」的项） -->
+          <view class="card beauty-item" wx:for="{{beautyList}}" wx:key="key" bindtap="goEditWithImage" data-ability="{{item.ability}}" data-panel="{{item.panel}}" hover-class="card-hover">
+            <image class="beauty-icon" src="{{item.icon}}" mode="aspectFit" />
+            <text class="beauty-name">{{item.name}}</text>
+          </view>
+        </view>
+      </view>
+
+      <!-- AI 智能处理：区块内**只保留「聊天 ›」入口**（M60）。
+           原先横排的六张 AI 能力卡（智能抠图/风格迁移/画质修复/AI 美颜/换背景/发型发色）
+           已从本区块删除 —— 六项能力在「核心入口区」「工具行」「全部工具面板」里各有一份入口，
+           这里再铺一遍只是重复占位；对话能力则只有本区块这一个入口，故保留。 -->
+      <view class="block-ai">
+        <view class="section-header">
+          <view class="section-title-wrap">
+            <image class="section-icon" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZmlsbD0iI2ZmZmZmZiIgZD0iTTIwIDlWN2MwLTEuMS0uOS0yLTItMmgtM2MwLTEuNjYtMS4zNC0zLTMtM1M5IDMuMzQgOSA1SDZjLTEuMSAwLTIgLjktMiAydjJjLTEuNjYgMC0zIDEuMzQtMyAzczEuMzQgMyAzIDN2NGMwIDEuMS45IDIgMiAyaDEyYzEuMSAwIDItLjkgMi0ydi00YzEuNjYgMCAzLTEuMzQgMy0zcy0xLjM0LTMtMy0zek03LjUgMTEuNWMwLS44My42Ny0xLjUgMS41LTEuNXMxLjUuNjcgMS41IDEuNVM5LjgzIDEzIDkgMTNzLTEuNS0uNjctMS41LTEuNXpNMTYgMTdIOHYtMmg4djJ6bS0xLTRjLS44MyAwLTEuNS0uNjctMS41LTEuNVMxNC4xNyAxMCAxNSAxMHMxLjUuNjcgMS41IDEuNVMxNS44MyAxMyAxNSAxM3oiLz48L3N2Zz4=" mode="aspectFit" />
+            <text class="section-title">AI 智能处理</text>
+          </view>
+          <!-- 进入「AI 智能处理」对话页（见 README 7.4 / 13 章；不再是选图进编辑页） -->
+          <text class="section-extra" bindtap="goChat" hover-class="btn-hover">聊天 ›</text>
+        </view>
+      </view>
+
+      <!-- 最近作品 -->
+      <view class="block-works">
+        <view class="section-header">
+          <view class="section-title-wrap">
+            <image class="section-icon" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZmlsbD0iI2ZmZmZmZiIgZD0iTTIxIDE5VjVjMC0xLjEtLjktMi0yLTJINWMtMS4xIDAtMiAuOS0yIDJ2MTRjMCAxLjEuOSAyIDIgMmgxNGMxLjEgMCAyLS45IDItMnpNOC41IDEzLjVsMi41IDMuMDFMMTQuNSAxMmw0LjUgNkg1bDMuNS00LjV6Ii8+PC9zdmc+" mode="aspectFit" />
+            <text class="section-title">最近作品</text>
+          </view>
+          <text class="section-extra" bindtap="goWorks">全部 ›</text>
+        </view>
+        <scroll-view class="h-scroll h-scroll-works" scroll-x enhanced show-scrollbar="{{false}}" wx:if="{{recentWorks.length}}">
+          <view class="h-track">
+            <!-- 点卡片直接带着这张图进编辑页继续改（「全部 ›」才进作品列表） -->
+            <view class="work-card" wx:for="{{recentWorks}}" wx:key="id" data-id="{{item.id}}" bindtap="onEditWork" hover-class="card-hover">
+              <image class="work-img" src="{{item.fullImage}}" mode="aspectFill" lazy-load />
+              <text class="work-tag">{{item.typeLabel}}</text>
+            </view>
+          </view>
+        </scroll-view>
+        <view wx:elif="{{worksLoaded}}" class="works-empty" bindtap="goEditWithImage" hover-class="btn-hover">
+          <text class="works-empty-text">暂无作品，选一张照片开始创作吧</text>
+        </view>
+      </view>
+
+      <view class="bottom-spacer"></view>
+    </view>
+  </scroll-view>
+
+  <!-- 底部导航 -->
+  <tab-bar active="home" enter="{{entrance}}" />
+
+  <!-- 工具面板：可拖拽 Modal Bottom Sheet（折叠/展开/下滑关闭） -->
+  <!-- 遮罩：全屏半透明黑，inline 控制显隐（Skyline 下最可靠），盖过底部导航栏 -->
+  <view class="sheet-mask" style="opacity: {{panelShow ? 1 : 0}}; visibility: {{panelShow ? 'visible' : 'hidden'}};" bindtap="onClosePanel"></view>
+  <view class="sheet-panel {{panelShow ? '' : 'sheet-hidden'}}"
+    bindtouchstart="onSheetTouchStart"
+    bindtouchmove="onSheetTouchMove"
+    bindtouchend="onSheetTouchEnd"
+    bindtouchcancel="onSheetTouchEnd"
+    style="transform: translateY({{dragY}}px); transition: transform {{dragging ? '0s' : '0.32s cubic-bezier(0.22, 1, 0.36, 1)'}};">
+    <view class="sheet-grab">
+      <view class="sheet-grab-bar"></view>
+      <text class="sheet-grab-tip">{{dragY <= foldY - 30 ? '下滑收起' : '上滑显示更多'}}</text>
+    </view>
+    <view class="sheet-head">
+      <text class="sheet-title">全部工具</text>
+      <view class="sheet-close" bindtap="onClosePanel" hover-class="btn-hover">
+        <image class="sheet-close-img" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZmlsbD0iIzhiODBhZCIgZD0iTTE5IDYuNDFMMTcuNTkgNSAxMiAxMC41OSA2LjQxIDUgNSA2LjQxIDEwLjU5IDEyIDUgMTcuNTkgNi40MSAxOSAxMiAxMy40MSAxNy41OSAxOSAxOSAxNy41OSAxMy40MSAxMnoiLz48L3N2Zz4=" mode="aspectFit" />
+      </view>
+    </view>
+    <!-- 工具网格：条目由 TOOL_LIST 驱动，每一项都能跳到对应落点（模板页 / AI 功能栏 / 工具面板）——
+           「没有对应功能页面」的条目已在数据层删除，这里不再需要占位提示 -->
+    <view class="tool-grid">
+      <view class="tool-cell" wx:for="{{toolItems}}" wx:key="key" bindtap="onToolTap" data-key="{{item.key}}" hover-class="card-hover">
+        <view class="tool-cell-ic">
+          <image class="tool-cell-img" src="{{item.icon}}" mode="aspectFit" />
+        </view>
+        <text class="tool-cell-name">{{item.name}}</text>
+        <text class="tool-cell-tag {{item.cls}}" wx:if="{{item.tag}}">{{item.tag}}</text>
+      </view>
+    </view>
+    <view class="sheet-safe"></view>
+  </view>
+
+  <!-- ===== 通知弹层（顶部铃铛） ===== -->
+  <!-- 遮罩：与工具面板同一套（盖过底部导航栏 z-index:100） -->
+  <view wx:if="{{noticeShow || settingShow}}" class="pop-mask {{popAnim ? 'pop-mask-in' : ''}}" bindtap="onClosePop"></view>
+  <view wx:if="{{noticeShow}}" class="pop-panel {{popAnim ? 'pop-panel-in' : ''}}">
+    <view class="pop-grab"><view class="pop-grab-bar"></view></view>
+    <view class="sheet-head">
+      <text class="sheet-title">通知</text>
+      <view class="sheet-close" bindtap="onClosePop" hover-class="btn-hover">
+        <image class="sheet-close-img" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZmlsbD0iIzhiODBhZCIgZD0iTTE5IDYuNDFMMTcuNTkgNSAxMiAxMC41OSA2LjQxIDUgNSA2LjQxIDEwLjU5IDEyIDUgMTcuNTkgNi40MSAxOSAxMiAxMy40MSAxNy41OSAxOSAxOSAxNy41OSAxMy40MSAxMnoiLz48L3N2Zz4=" mode="aspectFit" />
+      </view>
+    </view>
+    <!-- 列表由 noticeList 驱动（前端静态公告；后端消息中心见 README [规划]） -->
+    <view class="notice-list">
+      <view class="notice-item" wx:for="{{noticeList}}" wx:key="id">
+        <view class="notice-item-head">
+          <text class="notice-item-title">{{item.title}}</text>
+          <text class="notice-item-tag">{{item.tag}}</text>
+        </view>
+        <text class="notice-item-desc">{{item.desc}}</text>
+      </view>
+    </view>
+    <view class="pop-safe"></view>
+  </view>
+
+  <!-- ===== 设置弹层（顶部齿轮） ===== -->
+  <view wx:if="{{settingShow}}" class="pop-panel {{popAnim ? 'pop-panel-in' : ''}}">
+    <view class="pop-grab"><view class="pop-grab-bar"></view></view>
+    <view class="sheet-head">
+      <text class="sheet-title">设置</text>
+      <view class="sheet-close" bindtap="onClosePop" hover-class="btn-hover">
+        <image class="sheet-close-img" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZmlsbD0iIzhiODBhZCIgZD0iTTE5IDYuNDFMMTcuNTkgNSAxMiAxMC41OSA2LjQxIDUgNSA2LjQxIDEwLjU5IDEyIDUgMTcuNTkgNi40MSAxOSAxMiAxMy40MSAxNy41OSAxOSAxOSAxNy41OSAxMy40MSAxMnoiLz48L3N2Zz4=" mode="aspectFit" />
+      </view>
+    </view>
+    <view class="menu-list">
+      <view class="menu-row" bindtap="onClearCache" hover-class="menu-hover">
+        <image class="menu-icon" src="{{icons.refresh}}" mode="aspectFit" />
+        <text class="menu-text">清除缓存</text>
+        <image class="menu-chevron" src="{{icons.chevron}}" mode="aspectFit" />
+      </view>
+      <view class="menu-row" data-type="user" bindtap="goAgreement" hover-class="menu-hover">
+        <image class="menu-icon" src="{{icons.doc}}" mode="aspectFit" />
+        <text class="menu-text">用户协议</text>
+        <image class="menu-chevron" src="{{icons.chevron}}" mode="aspectFit" />
+      </view>
+      <view class="menu-row" data-type="privacy" bindtap="goAgreement" hover-class="menu-hover">
+        <image class="menu-icon" src="{{icons.shield}}" mode="aspectFit" />
+        <text class="menu-text">隐私政策</text>
+        <image class="menu-chevron" src="{{icons.chevron}}" mode="aspectFit" />
+      </view>
+      <view class="menu-row" bindtap="onLogout" hover-class="menu-hover">
+        <image class="menu-icon" src="{{icons.logout}}" mode="aspectFit" />
+        <text class="menu-text menu-text-danger">退出登录</text>
+        <image class="menu-chevron" src="{{icons.chevron}}" mode="aspectFit" />
+      </view>
+    </view>
+    <view class="setting-foot">Hi.cut v1.0.0 · AI 智能修图与创意贴纸工具</view>
+    <view class="pop-safe"></view>
+  </view>
+</view>

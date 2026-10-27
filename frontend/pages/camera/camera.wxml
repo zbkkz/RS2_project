@@ -1,0 +1,143 @@
+<!-- pages/camera/camera.wxml — 竖屏相机拍摄页（纯黑扁平 UI，9:19）
+  布局采用互不重叠的纵向分区：顶部黑条（× / 闪光灯）→ 最大化实时取景（flex:1）→ 倍率条 → 底部控制区。
+  控制区只保留「快门 + 相框」与「相册/拍照/翻转」两行（原「创意/原生/风格」模式行与右上「设置」钮已删除，
+  见 M53），快门行因此整体下移，取景框拿到全部剩余高度。
+  取景画面里的相框实时预览是**刻意叠加**在 <camera> 之上的：微信官方已明确「原生组件均已支持
+  同层渲染」，给普通节点显式 position + 正 z-index 即可覆盖（口径同 README 11.3 第 17 条）。
+-->
+<view class="camera-page">
+  <!-- 顶部黑条：左上白色 × 关闭；右侧仅剩闪光灯开关（原「设置」钮删除后，闪光灯即落在其位置） -->
+  <view class="top-strip" style="padding-top: {{topPadding}}px;">
+    <view class="top-row">
+      <view class="btn-close" bindtap="onClose" hover-class="nav-hover">
+        <image class="top-icon" src="{{ICONS.close}}" mode="aspectFit" />
+      </view>
+      <view class="top-right">
+        <!-- 闪光灯开关：关闭态 = 白色闪电 + 斜杠；点一下打开 = 琥珀色闪电 + 圆钮琥珀色高亮。
+             开启态透传 `flash="torch"`（常亮）而非 `on`，理由见 camera.js 文件头（M53）。 -->
+        <view
+          class="circle-btn {{flash === 'off' ? '' : 'circle-btn-on'}}"
+          bindtap="onToggleFlash"
+          hover-class="nav-hover"
+        >
+          <image class="top-icon" src="{{flash === 'off' ? ICONS.flashOff : ICONS.flashOn}}" mode="aspectFit" />
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 实时取景预览：占满除顶条 / 倍率条 / 底部控制区之外的全部高度（flex:1，M53 起为全页最大区块）。
+       取景框上叠一层相框实时预览（.vf-frame）：选了相框立刻能看到效果，所见即所得。
+       `--k`（装饰比例基准 = 取景区短边）由 camera.js 量取后传入，保证取景里的边框粗细
+       与最终成片一致。 -->
+  <view class="preview-wrap">
+    <camera
+      class="camera-preview"
+      id="camera"
+      device-position="{{devicePosition}}"
+      flash="{{flash}}"
+      zoom="{{zoom}}"
+      mode="normal"
+      bindinitdone="onCameraInit"
+    ></camera>
+    <view
+      wx:if="{{frameKey !== 'none'}}"
+      class="vf-frame frame-deco s-{{frameKey}}"
+      style="--k: {{vfK}}rpx;"
+    >
+      <block wx:if="{{frameKey === 'film'}}">
+        <view class="frame-bar frame-bar-top"></view>
+        <view class="frame-bar frame-bar-bottom"></view>
+      </block>
+      <block wx:elif="{{frameKey === 'corners'}}">
+        <view class="frame-arm frame-arm-tl"></view>
+        <view class="frame-arm frame-arm-tr"></view>
+        <view class="frame-arm frame-arm-bl"></view>
+        <view class="frame-arm frame-arm-br"></view>
+      </block>
+    </view>
+  </view>
+
+  <!-- 预览画面中下方：倍率条（三个深灰半透明圆形按钮，点中哪个数字就在数字后加 ×） -->
+  <view class="zoom-strip">
+    <view
+      wx:for="{{zoomList}}"
+      wx:key="*this"
+      class="zoom-btn {{zoom === item ? 'zoom-btn-active' : ''}}"
+      data-z="{{item}}"
+      bindtap="setZoom"
+    >{{item === zoom ? item + '×' : item}}</view>
+  </view>
+
+  <!-- 底部控制区：纯黑。原「创意 / 原生 / 风格」模式行已删除（M53），
+       这里只留快门行与最底部一排，整块高度由内容决定 —— 省下的高度全部给上方取景框。 -->
+  <view class="controls">
+    <!-- 快门区：左侧留白（原「美颜」入口已移除，保留同宽空位让快门居中） / 中大快门 / 右相框入口 -->
+    <view class="shutter-row">
+      <view class="side-col side-ghost"></view>
+      <view class="shutter" bindtap="onShutter" hover-class="shutter-hover">
+        <view class="shutter-inner"></view>
+      </view>
+      <view class="side-col" bindtap="onOpenFrames" hover-class="nav-hover">
+        <view class="thumb {{frameKey !== 'none' ? 'thumb-on' : ''}}">
+          <image class="thumb-frame" src="{{ICONS.frame}}" mode="aspectFit" />
+        </view>
+        <text class="side-label {{frameKey !== 'none' ? 'side-label-on' : ''}}">{{frameLabel}}</text>
+      </view>
+    </view>
+
+    <!-- 最底部一排：相册（左） / 拍照（中，白高亮） / 前后翻转（右） -->
+    <view class="bottom-row">
+      <view class="b-btn" bindtap="onAlbum" hover-class="nav-hover">
+        <image class="b-icon" src="{{ICONS.album}}" mode="aspectFit" />
+      </view>
+      <text class="b-capture" bindtap="onShutter">拍照</text>
+      <view class="b-btn" bindtap="onFlip" hover-class="nav-hover">
+        <image class="b-icon" src="{{ICONS.flip}}" mode="aspectFit" />
+      </view>
+    </view>
+  </view>
+</view>
+
+<!-- ========== 相框选择面板（底部弹层，4 列网格）==========
+     预览用 CSS 示意（本页为 WebView 渲染，CSS 能力完整），实际落到画面的绘制由
+     editor.js 调用 utils/frames.js 的 drawFrame() 完成 —— 两者共用同一份样式参数。
+     弹层放在 .camera-page 之外：该容器有 overflow:hidden，fixed 浮层作为页面直接子节点最稳。 -->
+<view wx:if="{{frameShow}}" class="fp-mask" bindtap="onCloseFrames"></view>
+<view wx:if="{{frameShow}}" class="fp-sheet" catchtap="noop">
+  <view class="fp-head">
+    <text class="fp-title">选择相框</text>
+    <view class="fp-close" bindtap="onCloseFrames" hover-class="nav-hover">
+      <image class="fp-close-icon" src="{{ICONS.close}}" mode="aspectFit" />
+    </view>
+  </view>
+
+  <view class="fp-grid">
+    <view
+      class="fp-cell {{frameKey === item.key ? 'fp-on' : ''}}"
+      wx:for="{{frames}}"
+      wx:key="key"
+      data-key="{{item.key}}"
+      bindtap="onPickFrame"
+      hover-class="fp-hover"
+    >
+      <view class="fp-box frame-deco s-{{item.key}}">
+        <!-- 胶片：上下黑条（齿孔由 .frame-bar::after 的渐变横向平铺绘制） -->
+        <block wx:if="{{item.key === 'film'}}">
+          <view class="frame-bar frame-bar-top"></view>
+          <view class="frame-bar frame-bar-bottom"></view>
+        </block>
+        <!-- 四角：四个 L 形括号 -->
+        <block wx:elif="{{item.key === 'corners'}}">
+          <view class="frame-arm frame-arm-tl"></view>
+          <view class="frame-arm frame-arm-tr"></view>
+          <view class="frame-arm frame-arm-bl"></view>
+          <view class="frame-arm frame-arm-br"></view>
+        </block>
+      </view>
+      <text class="fp-name">{{item.name}}</text>
+    </view>
+  </view>
+
+  <view class="fp-safe"></view>
+</view>

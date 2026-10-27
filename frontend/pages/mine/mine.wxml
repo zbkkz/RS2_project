@@ -1,0 +1,164 @@
+<!--pages/mine/mine.wxml-->
+<view class="glow glow-a"></view>
+<view class="glow glow-b"></view>
+
+<view class="page-root" style="padding-top: {{topPadding}}px; padding-bottom: {{tabBarHeight}}px;">
+  <!-- 底部让位由 .page-root 的 padding-bottom（JS 算出的导航栏真实占位）完成，滚动区 flex:1 自动避开 -->
+  <scroll-view class="scrollarea" scroll-y type="list">
+    <view class="page">
+
+      <!-- 页头 -->
+      <view class="page-header">
+        <text class="page-title">我的</text>
+      </view>
+
+      <!-- 资料卡 -->
+      <view class="card profile-card">
+        <view class="profile-avatar">
+          <image wx:if="{{avatarUrl}}" class="profile-avatar-img" src="{{avatarUrl}}" mode="aspectFill" />
+          <image wx:else class="profile-avatar-default" src="{{icons.user}}" mode="aspectFit" />
+        </view>
+        <view class="profile-info">
+          <text class="profile-name">{{profile.nickname || '未设置昵称'}}</text>
+          <text class="profile-sub" wx:if="{{profile.username}}">@{{profile.username}}</text>
+          <text class="profile-sub" wx:if="{{registerDate}}">注册于 {{registerDate}}</text>
+        </view>
+        <view class="profile-edit" bindtap="onOpenEdit" hover-class="btn-hover">
+          <image class="profile-edit-icon" src="{{icons.pencil}}" mode="aspectFit" />
+        </view>
+      </view>
+
+      <!-- 统计行 -->
+      <view class="stats-row">
+        <view class="stat-item">
+          <text class="stat-num">{{worksCount}}</text>
+          <text class="stat-label">作品数量</text>
+        </view>
+        <view class="stat-item stat-right">
+          <text class="stat-num">{{joinDays}}</text>
+          <text class="stat-label">加入天数</text>
+        </view>
+      </view>
+
+      <!-- 今日 AI 额度（GET /api/ai/quota，只读、不计次数）：
+           三层展示 —— ① 整体剩余占比 + 进度条（`total.percent`，服务端汇总，前端不自己求和）；
+           ② 6 个图像能力「剩余 / 上限」网格；③ 对话 / 对话内出图 / 语音三行
+           （语音与对话共用同一份上限，界面已注明）。网格用 flex 换行而不是 display:grid
+           （Skyline 下 grid 不生效，见 11.3 第 29 条） -->
+      <view class="card quota-card">
+        <view class="quota-head">
+          <text class="quota-title">今日 AI 额度</text>
+          <text wx:if="{{quotaLoaded && !quotaError}}" class="quota-sub">剩余可用</text>
+        </view>
+        <view wx:if="{{!quotaLoaded}}" class="quota-tip">加载中...</view>
+        <view wx:elif="{{quotaError}}" class="quota-tip">{{quotaError}}</view>
+        <block wx:else>
+          <view class="quota-remain-row">
+            <text class="quota-remain quota-remain-{{quotaLevel}}">{{quotaTotal.percent}}</text>
+            <text class="quota-remain-unit quota-remain-{{quotaLevel}}">%</text>
+          </view>
+          <!-- 进度条填充 = 剩余占比：用掉越多越短；配色随剩余比例下移（充足 → 偏少 → 告急） -->
+          <view class="quota-bar">
+            <view class="quota-bar-fill quota-bar-{{quotaLevel}}" style="width: {{quotaTotal.percent}}%;"></view>
+          </view>
+
+          <!-- 6 个图像能力：能力名直接取接口返回的 name（不自己映射中英） -->
+          <view class="quota-grid" wx:if="{{quotaAbilities.length}}">
+            <view class="quota-cell" wx:for="{{quotaAbilities}}" wx:key="ability">
+              <text class="quota-cell-name">{{item.name}}</text>
+              <text class="quota-cell-num">{{item.remaining}} / {{item.limit}}</text>
+            </view>
+          </view>
+
+          <!-- 对话三个用途（与图像能力分开：它们共用另一份额度口径） -->
+          <view class="quota-rows" wx:if="{{quotaUsages.length}}">
+            <view class="quota-row" wx:for="{{quotaUsages}}" wx:key="key">
+              <text class="quota-row-name">{{item.name}}</text>
+              <text class="quota-row-num">{{item.remaining}} / {{item.limit}}</text>
+            </view>
+          </view>
+
+          <view class="quota-foot">
+            <text class="quota-foot-text">今日已用 {{quotaTotal.used}} 次</text>
+            <text class="quota-foot-text">语音识别与 AI 对话共用次数；数字为「剩余 / 上限」</text>
+          </view>
+        </block>
+      </view>
+
+      <!-- 功能菜单 -->
+      <view class="card menu-card">
+        <view class="menu-row" bindtap="goWorks" hover-class="menu-hover">
+          <image class="menu-icon" src="{{icons.works}}" mode="aspectFit" />
+          <text class="menu-text">我的作品</text>
+          <image class="menu-chevron" src="{{icons.chevron}}" mode="aspectFit" />
+        </view>
+        <view class="menu-row" data-type="user" bindtap="goAgreement" hover-class="menu-hover">
+          <image class="menu-icon" src="{{icons.doc}}" mode="aspectFit" />
+          <text class="menu-text">用户协议</text>
+          <image class="menu-chevron" src="{{icons.chevron}}" mode="aspectFit" />
+        </view>
+        <view class="menu-row" data-type="privacy" bindtap="goAgreement" hover-class="menu-hover">
+          <image class="menu-icon" src="{{icons.shield}}" mode="aspectFit" />
+          <text class="menu-text">隐私政策</text>
+          <image class="menu-chevron" src="{{icons.chevron}}" mode="aspectFit" />
+        </view>
+        <view class="menu-row menu-row-last" bindtap="onOpenAbout" hover-class="menu-hover">
+          <image class="menu-icon" src="{{icons.info}}" mode="aspectFit" />
+          <text class="menu-text">关于 Hi.cut</text>
+          <image class="menu-chevron" src="{{icons.chevron}}" mode="aspectFit" />
+        </view>
+      </view>
+
+      <!-- 退出登录 -->
+      <view class="logout-btn" bindtap="onLogout" hover-class="btn-hover">
+        <image class="logout-icon" src="{{icons.logout}}" mode="aspectFit" />
+        <text class="logout-text">退出登录</text>
+      </view>
+
+      <view class="bottom-spacer"></view>
+    </view>
+  </scroll-view>
+
+  <!-- 编辑资料弹层 -->
+  <view wx:if="{{showEdit}}" class="modal-mask" bindtap="onCloseEdit">
+    <view class="modal-card" catchtap="noop">
+      <view class="modal-title">编辑资料</view>
+
+      <view class="edit-avatar-wrap" bindtap="onChooseAvatar" hover-class="btn-hover">
+        <view class="edit-avatar">
+          <image wx:if="{{editAvatarPreview}}" class="edit-avatar-img" src="{{editAvatarPreview}}" mode="aspectFill" />
+          <image wx:else class="edit-avatar-default" src="{{icons.user}}" mode="aspectFit" />
+        </view>
+        <view class="edit-avatar-badge">
+          <image class="edit-avatar-badge-icon" src="{{icons.camera}}" mode="aspectFit" />
+        </view>
+      </view>
+
+      <view class="edit-field">
+        <text class="edit-label">昵称</text>
+        <input class="edit-input" maxlength="20" value="{{editNickname}}" placeholder="请输入昵称" placeholder-class="edit-placeholder" bindinput="onNicknameInput" />
+      </view>
+
+      <view class="modal-actions">
+        <button class="modal-cancel" bindtap="onCloseEdit">取消</button>
+        <button class="modal-confirm" bindtap="onSaveProfile" disabled="{{saving}}">{{saving ? '保存中' : '保存'}}</button>
+      </view>
+    </view>
+  </view>
+
+  <!-- 关于弹层 -->
+  <view wx:if="{{showAbout}}" class="modal-mask" bindtap="onCloseAbout">
+    <view class="modal-card" catchtap="noop">
+      <view class="modal-title">关于 Hi.cut</view>
+      <view class="about-version">版本 1.0.0</view>
+      <view class="about-desc">AI 智能修图与创意贴纸工具</view>
+      <view class="about-tech">基于 Flask 与微信小程序</view>
+      <view class="modal-actions">
+        <button class="modal-confirm about-ok" bindtap="onCloseAbout">知道了</button>
+      </view>
+    </view>
+  </view>
+
+  <!-- 底部导航 -->
+  <tab-bar active="mine" />
+</view>

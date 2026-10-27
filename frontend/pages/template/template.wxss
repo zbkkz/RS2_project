@@ -1,0 +1,274 @@
+/**pages/template/template.wxss**/
+page {
+  height: 100vh;
+  background: linear-gradient(108deg, #eac4eb 0%, #bd8ed4 26%, #8463ac 52%, #4a3d7c 78%, #29234f 100%);
+}
+
+/* 背景装饰光斑（固定不滚动）：左侧粉白高光，右下深蓝压暗 */
+.glow {
+  position: fixed;
+  border-radius: 50%;
+  z-index: 0;
+  pointer-events: none;
+}
+.glow-a {
+  width: 620rpx;
+  height: 620rpx;
+  top: 6%;
+  left: -240rpx;
+  background: radial-gradient(circle, rgba(255, 234, 252, 0.55), rgba(255, 234, 252, 0) 70%);
+}
+.glow-b {
+  width: 560rpx;
+  height: 560rpx;
+  bottom: -8%;
+  right: -200rpx;
+  background: radial-gradient(circle, rgba(24, 18, 52, 0.45), rgba(24, 18, 52, 0) 70%);
+}
+
+.page-root {
+  /* 外层固定占满视口：不依赖 page 的百分比解析（Skyline 下 height:100% 可能解析不出）；
+     顶部 / 底部安全区的让位分别由 inline 的 padding-top / padding-bottom 完成 */
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+}
+/* 滚动区撑满外层扣除 padding 后的剩余空间：底部 padding = 底部导航真实占位（inline 传入），
+   所以滚到底时最后一行正好停在导航栏上沿。
+   「根节点定高 + 滚动区 flex:1」是聊天页已验证可用的做法（见 README 11.3 第 29 条）；
+   不要指望直接给 scroll-view 写 height —— Skyline 下它拿不到确定高度就不滚动。 */
+.scrollarea {
+  flex: 1;
+  overflow-y: hidden;
+}
+.page {
+  padding: 0 28rpx;
+  box-sizing: border-box;
+}
+
+/* ===== 卡片通用 ===== */
+.card {
+  background: rgba(255, 255, 255, 0.94);
+  border-radius: 30rpx;
+  box-shadow: 0 12rpx 32rpx rgba(76, 29, 149, 0.16);
+  box-sizing: border-box;
+}
+.card-hover {
+  opacity: 0.85;
+}
+.btn-hover {
+  opacity: 0.75;
+}
+
+/* ===== 搜索栏 ===== */
+.search-row {
+  margin-top: 20rpx;
+  display: flex;
+  align-items: center;
+}
+.search-bar {
+  flex: 1;
+  height: 84rpx;
+  border-radius: 999rpx;
+  background: rgba(255, 255, 255, 0.18);
+  border: 1rpx solid rgba(255, 255, 255, 0.3);
+  display: flex;
+  align-items: center;
+  padding: 0 30rpx;
+  box-sizing: border-box;
+}
+.search-icon {
+  width: 36rpx;
+  height: 36rpx;
+  opacity: 0.85;
+  flex-shrink: 0;
+}
+.search-input {
+  flex: 1;
+  margin-left: 16rpx;
+  font-size: 28rpx;
+  color: #ffffff;
+}
+.search-placeholder {
+  color: rgba(255, 255, 255, 0.75);
+}
+.search-btn {
+  margin-left: 24rpx;
+  font-size: 30rpx;
+  font-weight: 600;
+  color: #ffffff;
+  flex-shrink: 0;
+}
+
+/* ===== 分类 Tab ===== */
+.tab-scroll {
+  margin-top: 28rpx;
+  width: 100%;
+  /* Skyline 下横向 scroll-view 的交叉轴（高度）必须显式给值，否则高度塌陷：
+     条目不占布局高度，「分类 Tab」会被下方瀑布流顶上来（口径同首页 .h-scroll-*）。
+     Tab 内容高 = 文字行高（最大 34rpx 字号，约 48rpx）+ 下划线（8rpx + 8rpx 间距）≈ 64rpx，留余量取 80rpx。 */
+  height: 80rpx;
+}
+.tab-track {
+  display: flex;
+  width: max-content;
+  box-sizing: border-box;
+}
+.tab-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex-shrink: 0;
+}
+.tab-item + .tab-item {
+  margin-left: 44rpx;
+}
+.tab-text {
+  font-size: 30rpx;
+  color: rgba(255, 255, 255, 0.65);
+}
+.tab-active .tab-text {
+  font-size: 34rpx;
+  font-weight: 700;
+  color: #ffffff;
+}
+.tab-underline {
+  margin-top: 8rpx;
+  width: 40rpx;
+  height: 8rpx;
+  border-radius: 4rpx;
+  background: #ffffff;
+}
+
+/* ===== 双列瀑布流 ===== */
+.feed {
+  margin-top: 28rpx;
+  display: flex;
+  align-items: flex-start;
+}
+.feed-col {
+  width: 337rpx;
+  flex-shrink: 0;
+}
+.feed-col + .feed-col {
+  margin-left: 20rpx;
+}
+.tpl-card {
+  border-radius: 24rpx;
+  overflow: hidden;
+  margin-bottom: 20rpx;
+}
+.tpl-cover {
+  width: 100%;
+  display: block;
+  background: rgba(132, 99, 172, 0.12);
+}
+.tpl-body {
+  padding: 18rpx 20rpx 20rpx;
+}
+.tpl-name {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #33245c;
+}
+.tpl-meta {
+  margin-top: 14rpx;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.tpl-author {
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+}
+.tpl-avatar {
+  width: 36rpx;
+  height: 36rpx;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #a86bff 0%, #8b5cf6 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.tpl-avatar-icon {
+  width: 22rpx;
+  height: 22rpx;
+}
+.tpl-author-name {
+  margin-left: 10rpx;
+  font-size: 22rpx;
+  color: #9a8bb8;
+}
+.tpl-likes {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  /* 扩大点击热区：28rpx 的爱心单独作为点击目标太小，左右各补一点内边距 */
+  padding: 8rpx 4rpx 8rpx 16rpx;
+}
+.like-hover {
+  opacity: 0.6;
+}
+.tpl-heart {
+  width: 28rpx;
+  height: 28rpx;
+}
+.tpl-likes-num {
+  margin-left: 8rpx;
+  font-size: 22rpx;
+  color: #9a8bb8;
+}
+/* 已点赞：数字转品牌粉，与空心灰的心形一起构成两态区分 */
+.tpl-likes-num.liked {
+  color: #f857a6;
+  font-weight: 600;
+}
+.feed-empty {
+  margin-top: 28rpx;
+  height: 200rpx;
+  border-radius: 24rpx;
+  background: rgba(255, 255, 255, 0.16);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.feed-empty-text {
+  font-size: 26rpx;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+/* ===== 右下 + 悬浮钮 ===== */
+.fab {
+  position: fixed;
+  right: 36rpx;
+  bottom: 180rpx;
+  z-index: 20;
+  width: 104rpx;
+  height: 104rpx;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #f857a6 0%, #a86bff 100%);
+  box-shadow: 0 12rpx 28rpx rgba(232, 90, 203, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.fab-hover {
+  transform: scale(0.92);
+}
+.fab-icon {
+  width: 52rpx;
+  height: 52rpx;
+}
+
+/* 底部导航的净空已由 .page-root 的 padding-bottom 按真实高度扣除，这里只留一点呼吸留白 */
+.bottom-spacer {
+  height: 24rpx;
+}

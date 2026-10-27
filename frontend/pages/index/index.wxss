@@ -1,0 +1,650 @@
+/**pages/index/index.wxss**/
+page {
+  height: 100vh;
+  background: linear-gradient(108deg, #eac4eb 0%, #bd8ed4 26%, #8463ac 52%, #4a3d7c 78%, #29234f 100%);
+}
+
+/* 背景装饰光斑（固定不滚动）：左侧粉白高光，右下深蓝压暗 */
+.glow {
+  position: fixed;
+  border-radius: 50%;
+  z-index: 0;
+  pointer-events: none;
+}
+.glow-a {
+  width: 620rpx;
+  height: 620rpx;
+  top: 6%;
+  left: -240rpx;
+  background: radial-gradient(circle, rgba(255, 234, 252, 0.55), rgba(255, 234, 252, 0) 70%);
+}
+.glow-b {
+  width: 560rpx;
+  height: 560rpx;
+  bottom: -8%;
+  right: -200rpx;
+  background: radial-gradient(circle, rgba(24, 18, 52, 0.45), rgba(24, 18, 52, 0) 70%);
+}
+
+.page-root {
+  /* 外层固定占满视口：不依赖 page 的百分比解析（Skyline 下 height:100% 可能解析不出）；
+     顶部 / 底部安全区的让位分别由 inline 的 padding-top / padding-bottom 完成 */
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+}
+/* 滚动区撑满外层扣除 padding 后的剩余空间：底部 padding = 底部导航真实占位（inline 传入），
+   所以滚到底时最后一行正好停在导航栏上沿。
+   「根节点定高 + 滚动区 flex:1」是聊天页已验证可用的做法（见 README 11.3 第 29 条）；
+   不要指望直接给 scroll-view 写 height —— Skyline 下它拿不到确定高度就不滚动。 */
+.scrollarea {
+  flex: 1;
+  overflow-y: hidden;
+}
+.page {
+  padding: 0 28rpx;
+  box-sizing: border-box;
+}
+
+/* ===== 顶部品牌区 ===== */
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  /* 锁定总高 88rpx（20rpx padding + 68rpx 内容），避免品牌行高随图片/字体度量浮动，
+     保证登录页转场时镜头飞行终点（topPadding + 263rpx）推算精确 */
+  height: 88rpx;
+  box-sizing: border-box;
+  padding: 20rpx 4rpx 0;
+}
+/* 品牌艺术字标（backend/generate_brand.py 生成的横向 PNG）：
+   只给高度、宽度由 heightFix 等比撑开 —— 图不会折行，从根上避免"竖排" */
+.logo-img {
+  height: 68rpx;
+}
+.header-actions {
+  display: flex;
+}
+.icon-btn {
+  position: relative; /* 未读小红点定位锚点 */
+  width: 68rpx;
+  height: 68rpx;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.18);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.icon-btn + .icon-btn {
+  margin-left: 20rpx;
+}
+.icon-btn-img {
+  width: 38rpx;
+  height: 38rpx;
+}
+/* 未读小红点（通知）：读过后由 notice_read 本地标记消除 */
+.icon-dot {
+  position: absolute;
+  right: 4rpx;
+  top: 4rpx;
+  width: 16rpx;
+  height: 16rpx;
+  border-radius: 50%;
+  background: #ff5a7a;
+  border: 2rpx solid rgba(255, 255, 255, 0.9);
+}
+.btn-hover {
+  opacity: 0.75;
+}
+
+/* ===== 卡片通用 ===== */
+.card {
+  background: #ffffff; /* 纯白不透明填充 */
+  border-radius: 30rpx;
+  box-shadow: 0 12rpx 32rpx rgba(76, 29, 149, 0.16);
+  box-sizing: border-box;
+}
+.card-hover {
+  opacity: 0.85;
+}
+/* 卡片内装饰底图：剪贴蒙版（卡片 overflow:hidden 限定在圆角范围内），
+   25% 不透明度弱氛围，置于图标/文字下层，不响应触摸 */
+.card-bg {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0.25;
+  z-index: 0;
+  pointer-events: none;
+}
+
+/* ===== 核心入口区 ===== */
+.hero-grid {
+  margin-top: 30rpx;
+  display: flex;
+}
+.hero-main {
+  width: 336rpx;
+  height: 460rpx;
+  padding: 36rpx 30rpx;
+  display: flex;
+  flex-direction: column;
+}
+.hero-camera {
+  width: 178rpx;
+  height: 178rpx;
+  margin: 20rpx auto 0;
+}
+/* 登录页同款镜头眼睛：白面 + 黑环 + 粉紫饰环黑盘 + 白孔 + 玻璃反光
+   （content-box 160+9*2=178rpx，与 fly-eye 克隆体放大 1.48 倍后一一对应，转场落地无缝衔接；眨眼动画同登录页） */
+.hero-eye {
+  width: 160rpx;
+  height: 160rpx;
+  border-radius: 50%;
+  background: radial-gradient(circle at 36% 30%, #ffffff 0%, #f3e7f8 100%);
+  border: 9rpx solid #1c1c1e;
+  box-shadow: 0 10rpx 24rpx rgba(232, 90, 203, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  animation: hero-blink 4.6s ease-in-out infinite;
+}
+@keyframes hero-blink {
+  0%, 90%, 100% { transform: scaleY(1); }
+  93%, 96% { transform: scaleY(0.08); }
+}
+.hero-pupil {
+  position: relative;
+  width: 89rpx;
+  height: 89rpx;
+  border-radius: 50%;
+  background: radial-gradient(circle at 38% 32%, #3c3c44 0%, #17171b 72%);
+  border: 6rpx solid #d69ae4;
+}
+.hero-shine {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 30rpx;
+  height: 30rpx;
+  border-radius: 50%;
+  background: #ffffff;
+  transform: translate(-50%, -50%);
+}
+.hero-glint {
+  position: absolute;
+  left: 22%;
+  top: 18%;
+  width: 15rpx;
+  height: 15rpx;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.85);
+}
+.hero-title {
+  margin-top: 40rpx;
+  font-size: 34rpx;
+  font-weight: 700;
+  color: #33245c;
+}
+.hero-sub {
+  margin-top: 10rpx;
+  font-size: 24rpx;
+  color: #9a8bb8;
+}
+.hero-side {
+  flex: 1;
+  margin-left: 20rpx;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+.hero-item {
+  position: relative; /* 底图绝对定位锚点 */
+  overflow: hidden;   /* 剪贴蒙版：底图仅在卡片圆角范围内显示 */
+  height: 220rpx;
+  padding: 24rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+/* 图标 / 标题 / AI 标签永久置顶，不被底图遮挡 */
+.hero-item-icon {
+  position: relative;
+  z-index: 2;
+  width: 64rpx;
+  height: 64rpx;
+}
+.hero-item-title {
+  position: relative;
+  z-index: 2;
+  margin-top: 12rpx;
+  font-size: 30rpx;
+  font-weight: 700;
+  color: #33245c;
+}
+.ai-tag {
+  position: relative;
+  z-index: 2;
+  margin-top: 10rpx;
+  font-size: 20rpx;
+  color: #9333ea;
+  background: #f3e8ff;
+  border-radius: 999rpx;
+  padding: 4rpx 16rpx;
+}
+.hero-row {
+  margin-top: 20rpx;
+  display: flex;
+}
+.hero-row .hero-item {
+  flex: 1;
+  height: 200rpx;
+}
+.hero-row .hero-item + .hero-item {
+  margin-left: 20rpx;
+}
+
+/* ===== 分区标题 ===== */
+.section-header {
+  margin-top: 44rpx;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 4rpx;
+}
+.section-title-wrap {
+  display: flex;
+  align-items: center;
+}
+.section-icon {
+  width: 36rpx;
+  height: 36rpx;
+  margin-right: 12rpx;
+}
+.section-title {
+  font-size: 34rpx;
+  font-weight: 700;
+  color: #ffffff;
+}
+.section-extra {
+  font-size: 24rpx;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+/* ===== 美颜/贴纸 ===== */
+.beauty-row {
+  margin-top: 24rpx;
+  display: flex;
+}
+.beauty-item {
+  width: 160rpx;
+  height: 172rpx;
+  border-radius: 26rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+.beauty-item + .beauty-item {
+  margin-left: calc((100% - 640rpx) / 3);
+}
+.beauty-icon {
+  width: 62rpx;
+  height: 62rpx;
+}
+.beauty-name {
+  margin-top: 14rpx;
+  font-size: 24rpx;
+  font-weight: 500;
+  color: #4a3b66;
+}
+
+/* ===== 横向滚动区 ===== */
+.h-scroll {
+  margin-top: 24rpx;
+  width: 100%;
+}
+/* Skyline 下横向 scroll-view 的**交叉轴（高度）也必须显式给值**，否则高度会塌陷：
+   卡片只是「溢出」画出来、不占布局高度 —— 表现就是滚到底时最后一排卡片被底部导航栏压住，
+   而在内容尾部加多少留白都顶不上来（本次问题的根因，口径同竖直 scroll-view 的确定高度要求）。
+   高度 = 卡片自身高 + .h-track 的上下 padding（4 + 16 = 20rpx）。 */
+.h-scroll-works {
+  height: 236rpx; /* work-card 216rpx + 20rpx */
+}
+.h-track {
+  display: flex;
+  /* 交叉轴顶部对齐：卡片不被拉伸，各自保持自然高度（配合上面的确定高度使用） */
+  align-items: flex-start;
+  width: max-content;
+  padding: 4rpx 4rpx 16rpx;
+  box-sizing: border-box;
+}
+
+/* ===== 最近作品 ===== */
+.work-card {
+  position: relative;
+  width: 216rpx;
+  height: 216rpx;
+  border-radius: 24rpx;
+  overflow: hidden;
+  flex-shrink: 0;
+  background: rgba(255, 255, 255, 0.35);
+}
+.work-card + .work-card {
+  margin-left: 20rpx;
+}
+.work-img {
+  width: 100%;
+  height: 100%;
+}
+.work-tag {
+  position: absolute;
+  left: 12rpx;
+  bottom: 12rpx;
+  font-size: 20rpx;
+  color: #ffffff;
+  background: rgba(51, 36, 92, 0.65);
+  border-radius: 999rpx;
+  padding: 4rpx 16rpx;
+}
+.works-empty {
+  margin-top: 24rpx;
+  height: 160rpx;
+  border-radius: 24rpx;
+  background: rgba(255, 255, 255, 0.16);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.works-empty-text {
+  font-size: 26rpx;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+/* 底部导航的净空已由 .page-root 的 padding-bottom 按真实高度扣除，这里只留一点呼吸留白 */
+.bottom-spacer {
+  height: 24rpx;
+}
+
+/* ===== 工具面板（底部弹层） ===== */
+.sheet-mask {
+  position: fixed;
+  left: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.45); /* 全屏半透明蒙层，聚焦到底部面板 */
+  transition: opacity 0.3s ease;
+  z-index: 101; /* 盖过底部导航栏（z-index:100） */
+}
+.sheet-panel {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0; /* 贴底，面板盖过底部导航栏，最后一行完整显示 */
+  background: #ffffff;
+  border-radius: 40rpx 40rpx 0 0;
+  padding: 16rpx 28rpx 8rpx;
+  box-sizing: border-box;
+  z-index: 102; /* 盖过底部导航栏（z-index:100）与遮罩 */
+  /* transform 与 transition 由 JS 内联控制（支撑拖拽跟手） */
+}
+.sheet-panel.sheet-hidden {
+  visibility: hidden; /* 关闭后兜底隐藏，防残留遮挡 */
+}
+.sheet-grab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.sheet-grab-bar {
+  width: 72rpx;
+  height: 8rpx;
+  border-radius: 999rpx;
+  background: #e5e0f0;
+}
+.sheet-grab-tip {
+  margin-top: 10rpx;
+  font-size: 20rpx;
+  color: #b0a6cc;
+}
+.sheet-head {
+  margin-top: 24rpx;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 4rpx;
+}
+.sheet-title {
+  font-size: 32rpx;
+  font-weight: 700;
+  color: #33245c;
+}
+.sheet-close {
+  width: 56rpx;
+  height: 56rpx;
+  border-radius: 50%;
+  background: #f2eefb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.sheet-close-img {
+  width: 34rpx;
+  height: 34rpx;
+}
+.tool-grid {
+  margin-top: 28rpx;
+  display: flex;
+  flex-wrap: wrap;
+}
+.tool-cell {
+  width: 25%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 32rpx;
+}
+.tool-cell-ic {
+  width: 100rpx;
+  height: 100rpx;
+  border-radius: 28rpx;
+  background: #f6f2fc;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.tool-cell-img {
+  width: 56rpx;
+  height: 56rpx;
+}
+.tool-cell-name {
+  margin-top: 10rpx;
+  font-size: 24rpx;
+  font-weight: 500;
+  color: #4a3b66;
+}
+.tool-cell-tag {
+  margin-top: 4rpx;
+  font-size: 18rpx;
+  border-radius: 999rpx;
+  padding: 2rpx 12rpx;
+}
+.tool-cell-tag.ai {
+  color: #9333ea;
+  background: #f3e8ff;
+}
+.tool-cell-tag.new {
+  color: #0ea5e9;
+  background: #e0f2fe;
+}
+.sheet-safe {
+  height: calc(env(safe-area-inset-bottom) + 12rpx);
+}
+
+/* ===== 通知 / 设置弹层（顶部两个图标钮） ===== */
+/* 与工具面板同一套视觉语言，但**不需要拖拽**，故用「挂载后再抬起」的 slide-in：
+   打开 → wx:if 挂载 + popAnim=0（在屏外）→ nextTick 置 1 触发 transform 过渡；
+   关闭 → 先置 0 滑出，320ms 后再卸载，保证滑出动画完整（见 index.js openPop / closePop） */
+.pop-mask {
+  position: fixed;
+  left: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.45);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  z-index: 101; /* 盖过底部导航栏（z-index:100） */
+}
+.pop-mask-in {
+  opacity: 1;
+}
+.pop-panel {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: #ffffff;
+  border-radius: 40rpx 40rpx 0 0;
+  padding: 16rpx 28rpx 8rpx;
+  box-sizing: border-box;
+  z-index: 102;
+  transform: translateY(110%);
+  transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.pop-panel-in {
+  transform: translateY(0);
+}
+.pop-grab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.pop-grab-bar {
+  width: 72rpx;
+  height: 8rpx;
+  border-radius: 999rpx;
+  background: #e5e0f0;
+}
+.pop-safe {
+  height: calc(env(safe-area-inset-bottom) + 16rpx);
+}
+
+/* 通知条目：标题 + 标签 + 说明 */
+.notice-list {
+  margin-top: 24rpx;
+}
+.notice-item {
+  padding: 24rpx 26rpx;
+  border-radius: 24rpx;
+  background: #f8f5fe;
+}
+.notice-item + .notice-item {
+  margin-top: 16rpx;
+}
+.notice-item-head {
+  display: flex;
+  align-items: center;
+}
+.notice-item-title {
+  font-size: 28rpx;
+  font-weight: 700;
+  color: #33245c;
+}
+.notice-item-tag {
+  margin-left: 12rpx;
+  font-size: 18rpx;
+  color: #9333ea;
+  background: #f3e8ff;
+  border-radius: 999rpx;
+  padding: 2rpx 14rpx;
+}
+.notice-item-desc {
+  display: block;
+  margin-top: 10rpx;
+  font-size: 24rpx;
+  line-height: 36rpx;
+  color: #7d6fa0;
+}
+
+/* 设置菜单行（口径同个人页菜单：图标 + 文案 + 右箭头） */
+.menu-list {
+  margin-top: 20rpx;
+}
+.menu-row {
+  display: flex;
+  align-items: center;
+  height: 96rpx;
+}
+.menu-row + .menu-row {
+  border-top: 1rpx solid #f1ecfa;
+}
+.menu-icon {
+  width: 40rpx;
+  height: 40rpx;
+}
+.menu-text {
+  flex: 1;
+  margin-left: 20rpx;
+  font-size: 28rpx;
+  color: #33245c;
+}
+.menu-text-danger {
+  color: #ef4444;
+}
+.menu-chevron {
+  width: 32rpx;
+  height: 32rpx;
+}
+.menu-hover {
+  background: #f8f5fe;
+}
+.setting-foot {
+  margin-top: 8rpx;
+  text-align: center;
+  font-size: 22rpx;
+  color: #b0a6cc;
+}
+
+/* ===== 登录转场入场编排（仅 ?from=login 时启用） ===== */
+/* 各功能区块随背景扩张依次淡入上移 */
+.entrance .header,
+.entrance .hero-grid,
+.entrance .hero-row,
+.entrance .block-beauty,
+.entrance .block-ai,
+.entrance .block-works {
+  opacity: 0;
+  animation: rise-in 0.5s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+.entrance .header { animation-delay: 0.05s; }
+.entrance .hero-grid { animation-delay: 0.12s; }
+.entrance .hero-row { animation-delay: 0.2s; }
+.entrance .block-beauty { animation-delay: 0.28s; }
+.entrance .block-ai { animation-delay: 0.36s; }
+.entrance .block-works { animation-delay: 0.44s; }
+
+@keyframes rise-in {
+  from { opacity: 0; transform: translateY(36rpx); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* 摄像头圆弹入：衔接登录页飞来的镜头（延迟与 hero-grid 入场 0.18s 对齐，避免父容器透明期空弹） */
+.entrance .hero-camera {
+  animation: cam-pop 0.55s cubic-bezier(0.34, 1.56, 0.64, 1) 0.2s backwards;
+}
+
+@keyframes cam-pop {
+  from { transform: scale(0.2); }
+  to { transform: scale(1); }
+}

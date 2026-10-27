@@ -1,0 +1,552 @@
+/* pages/chat/chat.wxss — 「AI 智能处理」对话页（深色沉浸主题）
+   Skyline 骨架与首页/作品页一致：根节点 flex 定高，滚动全部交给 .chat-scroll（scroll-view）。
+   注：height: 100% 依赖 page 的确定高度；若某端解析不出高度导致滚动区塌陷，改成 100vh 即可。 */
+.chat-page {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  box-sizing: border-box;
+  background: linear-gradient(180deg, #262626 0%, #1b1b1b 100%);
+}
+
+/* ==================== 顶部导航 ==================== */
+/* 截图要求：右上角**只保留「新对话」**（头像与衣架图标已删除），历史会话在长按里 */
+.chat-head {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24rpx 8rpx;
+}
+.head-btn {
+  width: 64rpx;
+  height: 64rpx;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.08);
+}
+.head-hover {
+  background: rgba(255, 255, 255, 0.18);
+}
+.head-ic {
+  width: 36rpx;
+  height: 36rpx;
+}
+.head-tip {
+  flex-shrink: 0;
+  text-align: center;
+  font-size: 22rpx;
+  color: #8a8a8a;
+  padding: 4rpx 0 14rpx;
+}
+
+/* ==================== 消息区 ==================== */
+.chat-scroll {
+  flex: 1;
+  overflow-y: hidden;
+  padding: 0 24rpx;
+}
+.scroll-bottom {
+  height: 24rpx;
+}
+
+/* 空态 */
+.empty {
+  padding: 110rpx 20rpx 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.empty-badge {
+  width: 104rpx;
+  height: 104rpx;
+  border-radius: 34rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 30rpx;
+  font-weight: 600;
+  color: #ffffff;
+  background: linear-gradient(135deg, #8b5cf6 0%, #a78bfa 100%);
+  box-shadow: 0 14rpx 36rpx rgba(139, 92, 246, 0.35);
+}
+.empty-title {
+  margin-top: 30rpx;
+  font-size: 34rpx;
+  font-weight: 600;
+  color: #ffffff;
+}
+.empty-sub {
+  margin-top: 14rpx;
+  font-size: 26rpx;
+  line-height: 1.6;
+  color: #9a9a9a;
+  text-align: center;
+}
+.chips {
+  margin-top: 44rpx;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.chip {
+  margin: 0 12rpx 20rpx;
+  padding: 16rpx 28rpx;
+  border-radius: 32rpx;
+  font-size: 26rpx;
+  color: #e6e6e6;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1rpx solid rgba(255, 255, 255, 0.1);
+}
+.chip-hover {
+  background: rgba(139, 92, 246, 0.25);
+  border-color: rgba(139, 92, 246, 0.6);
+}
+.empty-hint {
+  margin-top: 16rpx;
+  font-size: 22rpx;
+  color: #6f6f6f;
+}
+
+/* 消息行：用户与 AI 都在左侧（与参考图一致），靠「气泡 / 纯文字 + 小修标签」区分 */
+.row {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 28rpx;
+  animation: msg-in 0.26s ease-out both;
+}
+@keyframes msg-in {
+  from {
+    opacity: 0;
+    transform: translateY(12rpx);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.ai-name {
+  font-size: 22rpx;
+  letter-spacing: 2rpx;
+  color: #a78bfa;
+  margin-bottom: 8rpx;
+}
+/* 用户消息靠右、AI 消息靠左（左右分栏是最易读的对话形态） */
+.row-user {
+  align-items: flex-end;
+}
+.row-ai {
+  align-items: flex-start;
+}
+.bubble {
+  max-width: 82%;
+  box-sizing: border-box;
+  align-self: flex-start;
+  border-radius: 28rpx;
+}
+/* 用户气泡：品牌紫渐变 + 右上角收角，靠右对齐 */
+.bubble-user {
+  align-self: flex-end;
+  padding: 22rpx 26rpx;
+  background: linear-gradient(135deg, #7c4dff 0%, #a78bfa 100%);
+  border-top-right-radius: 10rpx;
+  box-shadow: 0 8rpx 24rpx rgba(139, 92, 246, 0.26);
+}
+.bubble-user .bubble-text {
+  color: #ffffff;
+}
+/* AI 回复：无气泡，左侧紫色竖条 + 「小修」标签 */
+.bubble-ai {
+  padding: 2rpx 0 2rpx 22rpx;
+  border-left: 4rpx solid #8b5cf6;
+}
+/* 发送失败：用外发光标记，不改变盒子尺寸（避免气泡跳一下） */
+.bubble-failed {
+  box-shadow: 0 0 0 2rpx rgba(255, 77, 79, 0.55);
+}
+.bubble-text {
+  font-size: 28rpx;
+  line-height: 1.62;
+  color: #ececec;
+  word-break: break-all;
+}
+.bubble-img {
+  width: 420rpx;
+  max-width: 100%;
+  margin-top: 14rpx;
+  border-radius: 20rpx;
+  background: #2a2a2a;
+}
+.img-actions {
+  display: flex;
+  margin-top: 18rpx;
+}
+.mini-btn {
+  padding: 12rpx 26rpx;
+  margin-right: 16rpx;
+  border-radius: 30rpx;
+  font-size: 24rpx;
+  color: #ffffff;
+  background: linear-gradient(135deg, #8b5cf6 0%, #a78bfa 100%);
+}
+.mini-btn.ghost {
+  color: #e6e6e6;
+  background: rgba(255, 255, 255, 0.1);
+}
+.fail-tip {
+  display: block;
+  margin-top: 12rpx;
+  font-size: 22rpx;
+  color: #ff4d4f;
+}
+
+/* 等待态：三点跳动 + 进度文案 */
+.dots {
+  display: flex;
+  align-items: center;
+  height: 34rpx;
+}
+.dot {
+  width: 10rpx;
+  height: 10rpx;
+  border-radius: 50%;
+  margin-right: 10rpx;
+  background: #8b5cf6;
+  animation: dot-blink 1.2s infinite ease-in-out;
+}
+.dot:nth-child(2) {
+  animation-delay: 0.2s;
+}
+.dot:nth-child(3) {
+  animation-delay: 0.4s;
+}
+@keyframes dot-blink {
+  0%,
+  80%,
+  100% {
+    opacity: 0.3;
+    transform: translateY(0);
+  }
+  40% {
+    opacity: 1;
+    transform: translateY(-6rpx);
+  }
+}
+.pending-hint {
+  margin-top: 12rpx;
+  font-size: 24rpx;
+  color: #9a9a9a;
+}
+
+/* ==================== 录音提示条 ==================== */
+.rec-tip {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  margin: 0 24rpx 14rpx;
+  padding: 16rpx 24rpx;
+  border-radius: 24rpx;
+  background: rgba(245, 158, 11, 0.14);
+}
+.rec-wave {
+  width: 14rpx;
+  height: 14rpx;
+  border-radius: 50%;
+  margin-right: 16rpx;
+  background: #f59e0b;
+  animation: rec-pulse 1s infinite ease-in-out;
+}
+@keyframes rec-pulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.35;
+    transform: scale(1.6);
+  }
+}
+.rec-text {
+  font-size: 24rpx;
+  color: #f59e0b;
+}
+
+/* ==================== 底部输入栏 ==================== */
+.input-bar {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  margin: 0 24rpx;
+  margin-bottom: calc(24rpx + env(safe-area-inset-bottom));
+  padding: 12rpx 16rpx;
+  border-radius: 44rpx;
+  background: #2e2e2e;
+  box-shadow: 0 10rpx 30rpx rgba(0, 0, 0, 0.35);
+}
+/* 上传失败提示条（与输入栏同宽，位于其上方） */
+.upload-tip {
+  flex-shrink: 0;
+  margin: 0 24rpx 12rpx;
+  padding: 14rpx 24rpx;
+  border-radius: 20rpx;
+  background: rgba(255, 77, 79, 0.14);
+}
+.upload-tip-text {
+  font-size: 24rpx;
+  color: #ff8a8c;
+}
+/* 注意：这些固定尺寸控件必须 flex-shrink: 0 —— 否则被 flex:1 的输入框挤压后会宽度塌成 0，
+   表现为「图明明选了却看不到缩略图」（见 README 11.3 第 35 条） */
+.pick-btn {
+  flex-shrink: 0;
+  width: 64rpx;
+  height: 64rpx;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.pick-hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+.bar-ic {
+  width: 44rpx;
+  height: 44rpx;
+}
+
+/* 已选图片缩略图：上传中转圈 / 失败可重试 / 右上角移除角标。
+   角标必须显式 position + 正 z-index：Skyline 下同级元素会盖住未定位的兄弟（见 README 11.3 第 17 条） */
+.thumb {
+  position: relative;
+  flex-shrink: 0;
+  width: 80rpx;
+  height: 80rpx;
+  margin-right: 16rpx;
+}
+.thumb-img {
+  width: 80rpx;
+  height: 80rpx;
+  border-radius: 16rpx;
+}
+.thumb-dim {
+  opacity: 0.45;
+}
+.thumb-mask {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 2;
+  width: 80rpx;
+  height: 80rpx;
+  border-radius: 16rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.35);
+}
+.thumb-err {
+  background: rgba(255, 77, 79, 0.42);
+}
+.thumb-err-text {
+  font-size: 22rpx;
+  color: #ffffff;
+}
+.thumb-spin {
+  width: 32rpx;
+  height: 32rpx;
+  border-radius: 50%;
+  border: 4rpx solid rgba(255, 255, 255, 0.3);
+  border-top-color: #ffffff;
+  animation: thumb-spin 0.9s linear infinite;
+}
+@keyframes thumb-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.thumb-del {
+  position: absolute;
+  top: -10rpx;
+  right: -10rpx;
+  z-index: 3;
+  width: 34rpx;
+  height: 34rpx;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #1b1b1b;
+  border: 1rpx solid rgba(255, 255, 255, 0.25);
+}
+.del-ic {
+  width: 20rpx;
+  height: 20rpx;
+}
+
+.chat-input {
+  flex: 1;
+  height: 64rpx;
+  padding: 0 12rpx;
+  font-size: 28rpx;
+  color: #f0f0f0;
+}
+.ph {
+  font-size: 28rpx;
+  color: #7c7c7c;
+}
+.send-btn {
+  flex-shrink: 0;
+  height: 64rpx;
+  line-height: 64rpx;
+  padding: 0 30rpx;
+  border-radius: 32rpx;
+  font-size: 26rpx;
+  color: #ffffff;
+  background: linear-gradient(135deg, #8b5cf6 0%, #a78bfa 100%);
+}
+.send-hover {
+  opacity: 0.85;
+}
+.mic-btn {
+  position: relative;
+  flex-shrink: 0;
+  width: 72rpx;
+  height: 72rpx;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.1);
+}
+.mic-hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+.mic-on {
+  background: rgba(245, 158, 11, 0.22);
+}
+/* 录音时的环形脉冲（transform/opacity 动画，不触发布局重排） */
+.mic-ring {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 72rpx;
+  height: 72rpx;
+  border-radius: 50%;
+  border: 3rpx solid rgba(245, 158, 11, 0.85);
+  animation: mic-ring 1.2s infinite ease-out;
+}
+@keyframes mic-ring {
+  0% {
+    opacity: 0.9;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.6);
+  }
+}
+
+/* ==================== 历史会话弹层 ==================== */
+/* fixed + 正 z-index：要盖在消息区与输入栏之上（见 README 11.3 第 17 条） */
+.sheet-mask {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 90;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.55);
+}
+.sheet {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 91;
+  max-height: 68%;
+  display: flex;
+  flex-direction: column;
+  padding-bottom: env(safe-area-inset-bottom);
+  border-top-left-radius: 32rpx;
+  border-top-right-radius: 32rpx;
+  background: #2a2a2a;
+  animation: sheet-up 0.26s ease-out both;
+}
+@keyframes sheet-up {
+  from {
+    opacity: 0;
+    transform: translateY(40rpx);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.sheet-bar {
+  width: 72rpx;
+  height: 8rpx;
+  border-radius: 4rpx;
+  margin: 16rpx auto 0;
+  background: rgba(255, 255, 255, 0.25);
+}
+.sheet-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20rpx 32rpx;
+}
+.sheet-title {
+  font-size: 30rpx;
+  font-weight: 600;
+  color: #ffffff;
+}
+.sheet-close {
+  font-size: 26rpx;
+  color: #a78bfa;
+}
+.sheet-scroll {
+  flex: 1;
+  overflow-y: hidden;
+  padding: 0 24rpx;
+}
+.sheet-empty {
+  padding: 60rpx 0;
+  text-align: center;
+  font-size: 26rpx;
+  color: #8a8a8a;
+}
+.sheet-row {
+  display: flex;
+  align-items: center;
+  margin-bottom: 16rpx;
+  padding: 22rpx 24rpx;
+  border-radius: 24rpx;
+  background: rgba(255, 255, 255, 0.05);
+}
+.sheet-row-on {
+  background: rgba(139, 92, 246, 0.18);
+}
+.sheet-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+.sheet-row-title {
+  font-size: 28rpx;
+  color: #ececec;
+}
+.sheet-row-time {
+  margin-top: 8rpx;
+  font-size: 22rpx;
+  color: #8a8a8a;
+}
+.sheet-del {
+  width: 64rpx;
+  height: 64rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}

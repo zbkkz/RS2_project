@@ -1,0 +1,42 @@
+# ---------- Python ----------
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+venv/
+.venv/
+env/
+
+# ---------- 环境变量与密钥 ----------
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# ---------- 日志与临时文件 ----------
+*.log
+tmp/
+backend/uploads/.cleanup.lock
+backend/uploads/.cleanup.last
+
+# ---------- 运行时用户数据（原图 / 作品 / 头像 / AI 临时图）----------
+# 贴纸与模板属于随项目分发的静态资源，保留在版本库中
+backend/uploads/originals/
+backend/uploads/works/
+backend/uploads/avatars/
+backend/uploads/ai/
+
+# ---------- IDE / 工具 ----------
+.idea/
+.vscode/
+.codebuddy/
+.trae/
+.blhome/
+.DS_Store
+Thumbs.db
+
+# ---------- 微信开发者工具本地私有配置 ----------
+frontend/project.private.config.json

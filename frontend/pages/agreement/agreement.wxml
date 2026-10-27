@@ -1,0 +1,13 @@
+<!--pages/agreement/agreement.wxml-->
+<navigation-bar title="{{title}}" back="{{true}}" color="#2b3a67" background="#ffffff"></navigation-bar>
+<scroll-view class="agreement-scroll" scroll-y type="list">
+  <view class="doc">
+    <view class="doc-title">{{title}}</view>
+    <view class="doc-updated">更新日期：{{updated}}</view>
+    <view class="sec" wx:for="{{sections}}" wx:key="title">
+      <view class="sec-title">{{item.title}}</view>
+      <view class="sec-body">{{item.body}}</view>
+    </view>
+    <view class="doc-end">本{{type === 'privacy' ? '政策' : '协议'}}最终解释权归 Hi.cut 团队所有。如有疑问，请通过小程序内反馈渠道联系我们。</view>
+  </view>
+</scroll-view>

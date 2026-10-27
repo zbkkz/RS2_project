@@ -1,0 +1,190 @@
+<!--pages/login/login.wxml-->
+<wxs module="drag" src="./drag.wxs"></wxs>
+<view class="stage {{leaving ? 'leaving' : ''}}">
+  <!-- 漂浮物品层：定位 → 飞入 → 持续晃动 → 拖动/回弹，四层分离互不干扰；
+       拖动/瞳孔跟随/回弹由 WXS 在视图层直接处理，避免 setData 卡顿 -->
+  <view
+    wx:for="{{items}}"
+    wx:key="name"
+    id="pos-{{index}}"
+    class="float-pos"
+    data-index="{{index}}"
+    data-cx="{{cubeCX}}"
+    data-cy="{{cubeCY}}"
+    data-amp="{{cubeAmp}}"
+    style="left:{{item.x}}rpx;top:{{item.y}}rpx;"
+    bind:touchstart="{{drag.touchstart}}"
+    bind:touchmove="{{drag.touchmove}}"
+    bind:touchend="{{drag.touchend}}"
+    bind:touchcancel="{{drag.touchend}}"
+  >
+    <view
+      class="float-fly {{entered ? 'entered' : ''}}"
+      style="--fx:{{item.fx}}rpx;--fy:{{item.fy}}rpx;--fr:{{item.rot}}deg;transition-delay:{{item.delay}}ms;"
+    >
+      <view class="float-sway" style="animation-duration:{{item.dur}}s;animation-delay:{{item.sdelay}}s;">
+        <view id="item-{{index}}" class="float-item">
+          <image
+            class="float-img"
+            style="width:{{item.size}}rpx;height:{{item.size}}rpx;"
+            src="/assets/floats/{{item.name}}.png"
+            mode="aspectFit"
+          />
+          <view class="float-shadow" style="width:{{item.size * 0.55}}rpx;"></view>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 粉紫方块（镜头卡片）：单个镜头眼睛自由眨眼，拖动物品时镜头注视物品（位移由 WXS 内联控制）；
+       登录成功转场：镜头飞离后，方块背景以中心为原点向四周扩展铺满全屏，覆盖登录页元素 -->
+  <view class="cube {{booming ? 'cube-boom' : ''}}" id="cube" style="{{booming ? 'transform: translateX(-50%) scale(' + cubeScale + ');' : ''}}">
+    <view class="eye">
+      <view class="pupil" id="pupil">
+        <view class="pupil-shine"></view>
+        <view class="pupil-glint"></view>
+      </view>
+    </view>
+  </view>
+
+  <!-- Hi.cut 标题：物品飞入后缓慢淡入 -->
+  <view class="title-wrap {{showTitle ? 'show' : ''}}">
+    <image class="title-img" src="/assets/floats/title.png" mode="widthFix" />
+  </view>
+
+  <!-- 登录卡片：毛玻璃 + 蓝粉渐变；外层负责位移切换，内层负责果冻脉动（分离避免 transform 冲突） -->
+  <view class="panel-wrap {{loginSlow ? 'slow' : ''}} {{loginCls}}">
+    <view class="panel-jelly {{loginCls === 'in' && !loginSlow ? 'jelly' : ''}}">
+      <view class="login-panel">
+        <view class="panel-title">欢迎回来</view>
+        <view class="panel-sub">登录后继续你的创作</view>
+
+        <view class="input-item">
+          <image class="input-icon" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZmlsbD0iIzdhODdjZiIgZD0iTTEyIDExLjVhNC41IDQuNSAwIDEgMCAwLTkgNC41IDQuNSAwIDAgMCAwIDl6bTAgMmMtNC45NyAwLTkgMi40Ni05IDUuNXYxQTEuNSAxLjUgMCAwIDAgNC41IDIxLjVoMTVhMS41IDEuNSAwIDAgMCAxLjUtMS41di0xYzAtMy4wNC00LjAzLTUuNS05LTUuNXoiLz48L3N2Zz4=" />
+          <input class="input" maxlength="20" value="{{username}}" placeholder="请输入账号" placeholder-class="input-placeholder" bindinput="onAccountInput" />
+        </view>
+        <view class="input-item">
+          <image class="input-icon" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZmlsbD0iIzdhODdjZiIgZD0iTTEyIDJhNC41IDQuNSAwIDAgMSA0LjUgNC41VjEwaDFhMi41IDIuNSAwIDAgMSAyLjUgMi41djdhMi41IDIuNSAwIDAgMS0yLjUgMi41aC0xMUEyLjUgMi41IDAgMCAxIDQgMTkuNXYtN0EyLjUgMi41IDAgMCAxIDYuNSAxMGgxVjYuNUE0LjUgNC41IDAgMCAxIDEyIDJ6bTAgMmEyLjUgMi41IDAgMCAwLTIuNSAyLjVWMTBoNVY2LjVBMi41IDIuNSAwIDAgMCAxMiA0em0wIDkuMmExLjggMS44IDAgMCAxIC45IDMuMzZ2MS41NGEuOS45IDAgMCAxLTEuOCAwdi0xLjU0YTEuOCAxLjggMCAwIDEgLjktMy4zNnoiLz48L3N2Zz4=" />
+          <input class="input" password value="{{password}}" placeholder="请输入密码" placeholder-class="input-placeholder" bindinput="onPwdInput" />
+        </view>
+
+        <view class="forgot-row">
+          <text class="forgot-link" bindtap="onShowForgot">忘记密码？</text>
+        </view>
+
+        <button class="login-btn" loading="{{loading}}" bindtap="onLogin">登 录</button>
+
+        <view class="register-row">
+          <text class="register-text">还没有账号？</text>
+          <text class="register-link" bindtap="onShowRegister">立即注册</text>
+        </view>
+
+        <!-- 其他登录方式：卡片显现后错峰淡入 -->
+        <view class="panel-extra">
+          <view class="divider">
+            <view class="divider-line"></view>
+            <text class="divider-text">其他登录方式</text>
+            <view class="divider-line"></view>
+          </view>
+          <view class="other-item" bindtap="onWechatLogin">
+            <view class="other-icon wechat">
+              <image class="other-icon-img" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZmlsbD0iI2ZmZmZmZiIgZD0iTTguNjkxIDJDNC42MDEgMiAxLjIzNCA1LjEyIDEuMjM0IDguODkzYzAgMi4xNzYgMS4yMTkgNC4xMDUgMy4xMjEgNS4zODdsLS43ODEgMi42MDEgMi44ODMtMS41NjFjLjcwOS4xOTUgMS40NTcuMzAxIDIuMjM0LjMwMS4yNCAwIC40NzctLjAxMi43MS0uMDM1YTUuOSA1LjkgMCAwIDEtLjE5NC0xLjQ4YzAtMy4yOTYgMy4wNTEtNS45NjcgNi44MTMtNS45NjcuMjM2IDAgLjQ2OS4wMTQuNjk3LjAzOEMxNi4wNiA0LjY1OSAxMi43MiAyIDguNjkxIDJ6TTYuMzggNy41YS45LjkgMCAxIDEgMCAxLjguOS45IDAgMCAxIDAtMS44em00LjUgMGEuOS45IDAgMSAxIDAgMS44LjkuOSAwIDAgMSAwLTEuOHoiLz48cGF0aCBmaWxsPSIjZmZmZmZmIiBkPSJNMjIuNzY2IDE0LjEwNmMwLTIuNzUtMi41MzEtNC45OC01LjY1Mi00Ljk4LTMuMTIxIDAtNS42NTIgMi4yMy01LjY1MiA0Ljk4IDAgMi43NSAyLjUzMSA0Ljk4IDUuNjUyIDQuOTguNjUxIDAgMS4yNzMtLjA5MSAxLjg1NC0uMjU3bDIuNDAyIDEuMzAxLS42NTEtMi4xNjhjMS4xOTYtLjk2IDIuMDQ3LTIuMzIgMi4wNDctMy44NTZ6bS03LjUzNS0uOWEuNzUuNzUgMCAxIDEgMC0xLjUuNzUuNzUgMCAwIDEgMCAxLjV6bTMuNzUgMGEuNzUuNzUgMCAxIDEgMC0xLjUuNzUuNzUgMCAwIDEgMCAxLjV6Ii8+PC9zdmc+" />
+            </view>
+            <text class="other-name">微信</text>
+          </view>
+          <view class="agreement">
+            <text class="agreement-text">登录即代表同意</text>
+            <text class="agreement-link" bindtap="onOpenAgreement" data-type="user">《用户协议》</text>
+            <text class="agreement-text">和</text>
+            <text class="agreement-link" bindtap="onOpenAgreement" data-type="privacy">《隐私政策》</text>
+          </view>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 注册卡片：与登录卡片同一样式，向下弹出/向上弹入切换 -->
+  <view class="panel-wrap register-wrap {{regCls}}">
+    <view class="panel-jelly {{regCls === 'in' ? 'jelly' : ''}}">
+      <view class="login-panel">
+        <view class="panel-title">创建账号</view>
+        <view class="panel-sub">注册新账号，开始你的创作</view>
+
+        <view class="input-item">
+          <image class="input-icon" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZmlsbD0iIzdhODdjZiIgZD0iTTEyIDExLjVhNC41IDQuNSAwIDEgMCAwLTkgNC41IDQuNSAwIDAgMCAwIDl6bTAgMmMtNC45NyAwLTkgMi40Ni05IDUuNXYxQTEuNSAxLjUgMCAwIDAgNC41IDIxLjVoMTVhMS41IDEuNSAwIDAgMCAxLjUtMS41di0xYzAtMy4wNC00LjAzLTUuNS05LTUuNXoiLz48L3N2Zz4=" />
+          <input class="input" maxlength="20" value="{{regUsername}}" placeholder="账号（字母开头，4-20位）" placeholder-class="input-placeholder" bindinput="onRegAccountInput" />
+        </view>
+        <view class="input-item">
+          <image class="input-icon" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZmlsbD0iIzdhODdjZiIgZD0iTTEyIDJhMTAgMTAgMCAxIDAgMCAyMCAxMCAxMCAwIDAgMCAwLTIwek04LjUgOWExLjUgMS41IDAgMSAxIDAgMyAxLjUgMS41IDAgMCAxIDAtM3ptNyAwYTEuNSAxLjUgMCAxIDEgMCAzIDEuNSAxLjUgMCAwIDEgMC0zek0xMiAxNy41Yy0yLjMzIDAtNC4zMi0xLjQ1LTUuMTItMy41aDEuNGMuNzIgMS4yNSAyLjEzIDIgMy43MiAyczMtLjc1IDMuNzItMmgxLjRjLS44IDIuMDUtMi43OSAzLjUtNS4xMiAzLjV6Ii8+PC9zdmc+" />
+          <input class="input" maxlength="16" value="{{regNickname}}" placeholder="用户名（对外展示的昵称）" placeholder-class="input-placeholder" bindinput="onRegNicknameInput" />
+        </view>
+        <view class="input-item">
+          <image class="input-icon" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZmlsbD0iIzdhODdjZiIgZD0iTTEyIDJhNC41IDQuNSAwIDAgMSA0LjUgNC41VjEwaDFhMi41IDIuNSAwIDAgMSAyLjUgMi41djdhMi41IDIuNSAwIDAgMS0yLjUgMi41aC0xMUEyLjUgMi41IDAgMCAxIDQgMTkuNXYtN0EyLjUgMi41IDAgMCAxIDYuNSAxMGgxVjYuNUE0LjUgNC41IDAgMCAxIDEyIDJ6bTAgMmEyLjUgMi41IDAgMCAwLTIuNSAyLjVWMTBoNVY2LjVBMi41IDIuNSAwIDAgMCAxMiA0em0wIDkuMmExLjggMS44IDAgMCAxIC45IDMuMzZ2MS41NGEuOS45IDAgMCAxLTEuOCAwdi0xLjU0YTEuOCAxLjggMCAwIDEgLjktMy4zNnoiLz48L3N2Zz4=" />
+          <input class="input" password maxlength="20" value="{{regPassword}}" placeholder="密码（不少于6位）" placeholder-class="input-placeholder" bindinput="onRegPwdInput" />
+        </view>
+        <view class="input-item">
+          <image class="input-icon" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZmlsbD0iIzdhODdjZiIgZD0iTTggMmg4YTIuNSAyLjUgMCAwIDEgMi41IDIuNXYxNUEyLjUgMi41IDAgMCAxIDE2IDIySDhhMi41IDIuNSAwIDAgMS0yLjUtMi41di0xNUEyLjUgMi41IDAgMCAxIDggMnptMiAxNS44aDRhLjkuOSAwIDAgMSAwIDEuOGgtNGEuOS45IDAgMCAxIDAtMS44eiIvPjwvc3ZnPg==" />
+          <input class="input" type="number" maxlength="11" value="{{regPhone}}" placeholder="手机号（选填，用于找回账号）" placeholder-class="input-placeholder" bindinput="onRegPhoneInput" />
+        </view>
+
+        <button class="login-btn" loading="{{regLoading}}" bindtap="onRegister">注 册</button>
+
+        <view class="register-row">
+          <text class="register-text">已有账号？</text>
+          <text class="register-link" bindtap="onBackToLogin">返回登录</text>
+        </view>
+
+        <view class="agreement">
+          <text class="agreement-text">注册即代表同意</text>
+          <text class="agreement-link" bindtap="onOpenAgreement" data-type="user">《用户协议》</text>
+          <text class="agreement-text">和</text>
+          <text class="agreement-link" bindtap="onOpenAgreement" data-type="privacy">《隐私政策》</text>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 登录成功转场：铺屏末尾叠化首页同款深紫渐变，抹平 reLaunch 换页色差 -->
+  <view wx:if="{{leaving}}" class="boom-veil"></view>
+
+  <!-- 登录成功转场：镜头克隆体（起点即方块中心）。
+       挂载时带起始 transform + transition，隔一帧由 login.js 写入 flyTo（终点 translate+scale），
+       飞行由 CSS transition 完成 —— 不用 this.animate：该能力在部分环境未实现会直接抛错 -->
+  <view
+    wx:if="{{flyStart}}"
+    id="fly-eye"
+    class="fly-eye"
+    style="left:{{flyStart.x}}px;top:{{flyStart.y}}px;transform: translate(-50%,-50%) {{flyTo}};transition: transform 500ms cubic-bezier(0.5, 0, 0.15, 1);"
+  >
+    <view class="fly-pupil">
+      <view class="pupil-shine"></view>
+      <view class="pupil-glint"></view>
+    </view>
+  </view>
+
+  <!-- 忘记密码弹层：账号 + 新密码直接重置（开发期简化方案） -->
+  <view wx:if="{{showForgot}}" class="modal-mask" bindtap="onCloseForgot">
+    <view class="forgot-card" catchtap="noop">
+      <view class="panel-title">重置密码</view>
+      <view class="panel-sub">输入账号并设置新密码</view>
+
+      <view class="input-item">
+        <image class="input-icon" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZmlsbD0iIzdhODdjZiIgZD0iTTEyIDExLjVhNC41IDQuNSAwIDEgMCAwLTkgNC41IDQuNSAwIDAgMCAwIDl6bTAgMmMtNC45NyAwLTkgMi40Ni05IDUuNXYxQTEuNSAxLjUgMCAwIDAgNC41IDIxLjVoMTVhMS41IDEuNSAwIDAgMCAxLjUtMS41di0xYzAtMy4wNC00LjAzLTUuNS05LTUuNXoiLz48L3N2Zz4=" />
+        <input class="input" maxlength="20" value="{{fpUsername}}" placeholder="请输入账号" placeholder-class="input-placeholder" bindinput="onFpAccountInput" />
+      </view>
+      <view class="input-item">
+        <image class="input-icon" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZmlsbD0iIzdhODdjZiIgZD0iTTEyIDJhNC41IDQuNSAwIDAgMSA0LjUgNC41VjEwaDFhMi41IDIuNSAwIDAgMSAyLjUgMi41djdhMi41IDIuNSAwIDAgMS0yLjUgMi41aC0xMUEyLjUgMi41IDAgMCAxIDQgMTkuNXYtN0EyLjUgMi41IDAgMCAxIDYuNSAxMGgxVjYuNUE0LjUgNC41IDAgMCAxIDEyIDJ6bTAgMmEyLjUgMi41IDAgMCAwLTIuNSAyLjVWMTBoNVY2LjVBMi41IDIuNSAwIDAgMCAxMiA0em0wIDkuMmExLjggMS44IDAgMCAxIC45IDMuMzZ2MS41NGEuOS45IDAgMCAxLTEuOCAwdi0xLjU0YTEuOCAxLjggMCAwIDEgLjktMy4zNnoiLz48L3N2Zz4=" />
+        <input class="input" password maxlength="20" value="{{fpPassword}}" placeholder="新密码（不少于6位）" placeholder-class="input-placeholder" bindinput="onFpPwdInput" />
+      </view>
+      <view class="input-item">
+        <image class="input-icon" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZmlsbD0iIzdhODdjZiIgZD0iTTEyIDJhNC41IDQuNSAwIDAgMSA0LjUgNC41VjEwaDFhMi41IDIuNSAwIDAgMSAyLjUgMi41djdhMi41IDIuNSAwIDAgMS0yLjUgMi41aC0xMUEyLjUgMi41IDAgMCAxIDQgMTkuNXYtN0EyLjUgMi41IDAgMCAxIDYuNSAxMGgxVjYuNUE0LjUgNC41IDAgMCAxIDEyIDJ6bTAgMmEyLjUgMi41IDAgMCAwLTIuNSAyLjVWMTBoNVY2LjVBMi41IDIuNSAwIDAgMCAxMiA0em0wIDkuMmExLjggMS44IDAgMCAxIC45IDMuMzZ2MS41NGEuOS45IDAgMCAxLTEuOCAwdi0xLjU0YTEuOCAxLjggMCAwIDEgLjktMy4zNnoiLz48L3N2Zz4=" />
+        <input class="input" password maxlength="20" value="{{fpPassword2}}" placeholder="确认新密码" placeholder-class="input-placeholder" bindinput="onFpPwd2Input" />
+      </view>
+
+      <view class="forgot-actions">
+        <button class="forgot-cancel" bindtap="onCloseForgot">取 消</button>
+        <button class="forgot-confirm" loading="{{fpLoading}}" bindtap="onConfirmReset">确认重置</button>
+      </view>
+    </view>
+  </view>
+</view>

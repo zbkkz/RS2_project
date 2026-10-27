@@ -1,0 +1,238 @@
+/* pages/works/works.wxss */
+/* Skyline 下页面级滚动不生效：根节点固定占满视口，滚动交给 .works-scroll（scroll-view）。
+   与首页 / 模板页 / 我的页同一套骨架（.page-root + .scrollarea）。
+   注：height: 100% 依赖 page 的确定高度；若某端解析不出高度导致滚动区塌陷，
+   改成 height: 100vh 即可（两者取其一，不要同时写）。 */
+.works-page {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  box-sizing: border-box;
+  padding: 24rpx;
+  background: #f5f6f8;
+}
+
+.works-scroll {
+  flex: 1;
+  overflow-y: hidden;
+}
+
+.scroll-bottom {
+  height: 24rpx;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  padding: 16rpx 8rpx 24rpx;
+}
+/* 返回按钮：由「我的」/首页 navigateTo 进入，页面内需要自带返回入口 */
+.back-btn {
+  width: 72rpx;
+  height: 72rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 4rpx;
+}
+.back-icon {
+  width: 44rpx;
+  height: 44rpx;
+}
+.back-hover {
+  opacity: 0.5;
+}
+.title {
+  font-size: 40rpx;
+  font-weight: 600;
+  color: #1f2329;
+}
+.count {
+  margin-left: 16rpx;
+  font-size: 24rpx;
+  color: #8a93a6;
+}
+
+.empty {
+  padding-top: 200rpx;
+  text-align: center;
+}
+.empty-text {
+  color: #8a93a6;
+  font-size: 28rpx;
+}
+
+/* 双列卡片墙：用 flex 而不是 display:grid —— Skyline 下 grid 布局不生效，
+   会退化成单列整宽（卡片被拉满屏宽）。 */
+.grid {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+}
+.work-card {
+  width: 48.6%; /* 两列 + 约 20rpx 中缝 */
+  margin-bottom: 20rpx;
+  background: #fff;
+  border-radius: 20rpx;
+  overflow: hidden;
+  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.04);
+}
+.work-img {
+  width: 100%;
+  height: 340rpx;
+  background: #eef0f3;
+  display: block;
+}
+.work-info {
+  padding: 16rpx;
+}
+.work-title {
+  font-size: 28rpx;
+  color: #1f2329;
+  display: block;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.work-time {
+  display: block;
+  margin-top: 8rpx;
+  font-size: 22rpx;
+  color: #8a93a6;
+}
+
+.loading {
+  text-align: center;
+  color: #8a93a6;
+  padding: 32rpx;
+  font-size: 26rpx;
+}
+/* 「上滑或点击加载更多」是兜底的加载入口（触底事件在极端情况下可能不触发），
+   给它一个可点击反馈，让用户知道这一行可以点 */
+.load-hover {
+  opacity: 0.6;
+}
+
+/* 详情弹层 */
+.modal-mask {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+.modal-card {
+  width: 640rpx;
+  background: #fff;
+  border-radius: 24rpx;
+  overflow: hidden;
+  /* 兜底：小屏上内容不得高于屏幕（超出部分被裁，点遮罩即可关闭） */
+  max-height: 88vh;
+}
+.modal-img {
+  width: 100%;
+  height: 480rpx;
+  background: #eef0f3;
+  display: block;
+}
+.modal-info {
+  padding: 24rpx 28rpx;
+}
+.modal-title {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #1f2329;
+  display: block;
+}
+.modal-time {
+  display: block;
+  margin-top: 10rpx;
+  font-size: 24rpx;
+  color: #8a93a6;
+}
+/* 编辑历史 */
+.modal-history {
+  padding: 0 28rpx 20rpx;
+  border-top: 1rpx solid #f0f1f5;
+  padding-top: 20rpx;
+}
+.history-title {
+  display: block;
+  font-size: 26rpx;
+  font-weight: 600;
+  color: #1f2329;
+  margin-bottom: 12rpx;
+}
+.history-tip {
+  font-size: 24rpx;
+  color: #8a93a6;
+  padding: 8rpx 0;
+}
+.history-err {
+  color: #d48806;
+}
+/* 高度由 JS 按条数算出（见 works.js 的 HISTORY_ITEM_H / HISTORY_MAX_H）：
+   Skyline 下竖直 scroll-view 必须有确定高度，不能用 max-height */
+.history-scroll {
+  width: 100%;
+}
+.history-item {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  height: 76rpx;
+}
+.history-action {
+  font-size: 26rpx;
+  color: #1f2329;
+}
+.history-time {
+  font-size: 22rpx;
+  color: #8a93a6;
+}
+
+.modal-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+  padding: 8rpx 28rpx 28rpx;
+}
+/* 「继续编辑」是主操作，独占一行；删除 / 关闭 并排一行 */
+.modal-row {
+  display: flex;
+  flex-direction: row;
+  gap: 20rpx;
+}
+.edit-btn,
+.del-btn,
+.close-btn {
+  height: 76rpx;
+  line-height: 76rpx;
+  border-radius: 16rpx;
+  font-size: 28rpx;
+  padding: 0;
+}
+.edit-btn {
+  width: 100%;
+  background: linear-gradient(135deg, #4a7dff, #6f9bff);
+  color: #fff;
+}
+.del-btn,
+.close-btn {
+  flex: 1;
+}
+.del-btn {
+  background: #ff4d4f;
+  color: #fff;
+}
+.close-btn {
+  background: #f0f1f5;
+  color: #1f2329;
+}

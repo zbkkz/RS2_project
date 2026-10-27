@@ -1,0 +1,86 @@
+<!--pages/works/works.wxml
+  注意：本项目全局使用 Skyline 渲染，而 **Skyline 下页面级滚动不生效**（页面的默认滚动被禁用），
+  列表内容必须由 <scroll-view> 承载 —— 首页 / 模板页 / 我的页都遵循这一约定，
+  本页此前是裸 <view> + min-height:100vh，因此内容超出后完全滚不动、下拉刷新也从未触发。 -->
+<view class="works-page" style="padding-top: {{topPadding}}px;">
+  <view class="header">
+    <!-- 全局 navigationStyle 为 custom（无系统返回栏），页面内自带返回入口 -->
+    <view class="back-btn" bindtap="goBack" hover-class="back-hover">
+      <image class="back-icon" src="{{icons.back}}" mode="aspectFit" />
+    </view>
+    <text class="title">我的作品</text>
+    <text class="count">共 {{total}} 个</text>
+  </view>
+
+  <!-- 滚动容器：Skyline 下页面级下拉刷新（enablePullDownRefresh）同样不生效，
+       因此下拉刷新改用 scroll-view 自带的 refresher（bindrefresherrefresh）。 -->
+  <!-- 触底加载下一页：作品超过一页（20 条）时，滑到底部自动追加，
+       否则第 21 张起永远看不到（见 11.3 第 46 条） -->
+  <scroll-view
+    class="works-scroll"
+    scroll-y
+    type="list"
+    refresher-enabled
+    refresher-triggered="{{refreshing}}"
+    bindrefresherrefresh="onRefresh"
+    bindscrolltolower="onLoadMore"
+    lower-threshold="120"
+  >
+    <view wx:if="{{items.length === 0 && finished}}" class="empty">
+      <text class="empty-text">暂无作品</text>
+    </view>
+
+    <view class="grid">
+      <view class="work-card" wx:for="{{items}}" wx:key="id" bindtap="onViewDetail" data-id="{{item.id}}">
+        <image class="work-img" src="{{item.fullImage}}" mode="aspectFill" />
+        <view class="work-info">
+          <text class="work-title">{{item.title}}</text>
+          <text class="work-time">{{item.created_at}}</text>
+        </view>
+      </view>
+    </view>
+
+    <view wx:if="{{loading}}" class="loading">加载中...</view>
+    <!-- 触底加载（bindscrolltolower）之外的兜底入口：点一下也能加载下一页 -->
+    <view wx:elif="{{!finished && items.length > 0}}" class="loading" bindtap="onLoadMore" hover-class="load-hover">上滑或点击加载更多</view>
+    <view wx:elif="{{items.length > 0}}" class="loading">没有更多了</view>
+    <view class="scroll-bottom"></view>
+  </scroll-view>
+
+  <!-- 作品详情弹层（fixed 定位，放在滚动容器之外） -->
+  <view wx:if="{{detailWork}}" class="modal-mask" bindtap="onCloseDetail">
+    <view class="modal-card" catchtap="noop">
+      <image class="modal-img" src="{{detailWork.fullImage}}" mode="aspectFit" />
+      <view class="modal-info">
+        <text class="modal-title">{{detailWork.title}}</text>
+        <text class="modal-time">创建时间：{{detailWork.created_at}}</text>
+        <text class="modal-time">作品类型：{{detailWork.typeLabel}}</text>
+      </view>
+
+      <!-- 编辑历史（GET /api/works/<id>/records，接口早已实现、本次接出来）：
+           弹层是 fixed 浮层、位于页面 scroll-view 之外，条目多时没有页面滚动兜底，
+           因此这里必须用局部 scroll-view，且高度由 JS 按条数算出（recordsHeight）。 -->
+      <view class="modal-history">
+        <text class="history-title">编辑历史</text>
+        <view wx:if="{{recordsLoading}}" class="history-tip">加载中...</view>
+        <view wx:elif="{{recordsError}}" class="history-tip history-err" bindtap="onRetryRecords">{{recordsError}}，点击重试</view>
+        <view wx:elif="{{records.length === 0}}" class="history-tip">暂无编辑记录</view>
+        <scroll-view wx:else class="history-scroll" style="height: {{recordsHeight}}rpx;" scroll-y type="list">
+          <view class="history-item" wx:for="{{records}}" wx:key="id">
+            <text class="history-action">{{item.actionLabel}}</text>
+            <text class="history-time">{{item.created_at}}</text>
+          </view>
+        </scroll-view>
+      </view>
+
+      <view class="modal-actions">
+        <!-- 「继续编辑」带着这张作品的原图回到编辑页接着改（此前只能看/删，改不了） -->
+        <button class="edit-btn" bindtap="onEditWork">继续编辑</button>
+        <view class="modal-row">
+          <button class="del-btn" bindtap="onDelete">删除作品</button>
+          <button class="close-btn" bindtap="onCloseDetail">关 闭</button>
+        </view>
+      </view>
+    </view>
+  </view>
+</view>

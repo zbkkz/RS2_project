@@ -1,0 +1,632 @@
+<!--pages/editor/editor.wxml 图片查看页：三层结构（沉浸预览 / 查看操作 / 图片编辑）-->
+<view class="page layer-{{layer}}">
+  <!-- 单一全屏画布：切层只改绘制视口，不重建 canvas 节点；
+       canvasStyle 仅导出期间生效（把画布显示矩形对齐到导出区域，见 editor.js exportRegion）。
+       ⚠️ 不要给画布元素加背景色 / 不透明样式：画布在视觉上压在普通 DOM 之上，
+       编辑层的头部与底部工具栏是靠「画布除图片外透明」才看得见的（见 editor.js paintBackdrop） -->
+  <canvas wx:if="{{canvasMounted}}" type="2d" id="editorCanvas" class="stage" style="{{canvasStyle}}"></canvas>
+
+  <!-- 沉浸层/查看层：整屏轻触热区（图片1 ⇄ 图片2）；编辑层需要触摸涂鸦，故不渲染 -->
+  <view wx:if="{{layer!=='edit'}}" class="stage-tap" bindtap="onStageTap"></view>
+
+  <!-- ================= 第一层：沉浸预览（图片1，无任何 UI） ================= -->
+  <block wx:if="{{layer==='preview'}}">
+    <view class="anchor">
+      <!-- 首帧占位图：DOM `<image>` 与 canvas 同一 aspectFit 口径，canvas 画出第一帧后即撤掉。
+           canvas 是独立合成层、可能晚于 DOM 上屏，没有它就会看到一块空黑（见 11.3 第 67 条） -->
+      <image wx:if="{{pendingPreview}}" class="anchor-photo" src="{{pendingPreview}}" mode="aspectFit" bindload="onPreviewPhotoLoad" />
+    </view>
+  </block>
+
+  <!-- ================= 第三层：图片编辑（纯黑 UI） ================= -->
+  <block wx:if="{{layer==='edit'}}">
+    <!-- 顶部：普通编辑为「取消 / 保存」（保存仅在有改动时高亮） -->
+    <view wx:if="{{!cropMode && !filterMode && !adjustMode && !aiMode}}" class="edit-head" style="padding-top: {{topPadding}}px;">
+      <view class="eh-btn eh-cancel" bindtap="onEditCancel">取消</view>
+      <view class="eh-btn {{hasEdits ? 'eh-on' : ''}}" bindtap="onEditSave">
+        {{saving ? '保存中' : '保存'}}
+      </view>
+    </view>
+    <!-- 顶部：裁切旋转 / 滤镜 / 增强 / AI 能力功能栏下为居中标题 -->
+    <view wx:else class="mode-head" style="padding-top: {{topPadding}}px;">
+      <text class="mode-head-title">{{cropMode ? '裁切旋转' : (filterMode ? '滤镜' : (adjustMode ? '增强' : aiInfo.name))}}</text>
+    </view>
+
+    <!-- 绘制视口锚点：头部与底部功能栏之间的剩余空间 -->
+    <view class="anchor">
+      <!-- 首帧占位图（同 preview 层）：直达入口首帧就是编辑层，靠它避免「深色 UI + 空黑」的空窗 -->
+      <image wx:if="{{pendingPreview}}" class="anchor-photo" src="{{pendingPreview}}" mode="aspectFit" bindload="onPreviewPhotoLoad" />
+      <!-- 涂鸦触摸层（仅涂鸦面板开启时拦截触摸）：
+           catchtouchcancel 必须绑定：手指被系统手势/来电打断时只发 touchcancel、
+           不发 touchend，缺了它这一笔会悬挂在 _stroke 上（画面上擦不掉、还会被拍平进底图） -->
+      <view
+        wx:if="{{panel==='doodle' && !cropMode && !filterMode && !adjustMode && !aiMode}}"
+        class="doodle-touch"
+        catchtouchstart="onDoodleStart"
+        catchtouchmove="onDoodleMove"
+        catchtouchend="onDoodleEnd"
+        catchtouchcancel="onDoodleEnd"
+      ></view>
+      <!-- 马赛克触摸层（仅马赛克面板开启时拦截触摸） -->
+      <view
+        wx:if="{{panel==='mosaic' && !cropMode && !filterMode && !adjustMode && !aiMode}}"
+        class="paint-touch"
+        catchtouchstart="onMosaicStart"
+        catchtouchmove="onMosaicMove"
+        catchtouchend="onMosaicEnd"
+        catchtouchcancel="onMosaicEnd"
+      ></view>
+      <!-- 文字触摸层（在图片上拖动已添加的文字） -->
+      <view
+        wx:if="{{panel==='text' && !cropMode && !filterMode && !adjustMode && !aiMode}}"
+        class="paint-touch"
+        catchtouchstart="onTextTouchStart"
+        catchtouchmove="onTextTouchMove"
+        catchtouchend="onTextTouchEnd"
+        catchtouchcancel="onTextTouchEnd"
+      ></view>
+      <!-- 贴纸触摸层（在图片上拖动已添加的贴纸） -->
+      <view
+        wx:if="{{panel==='sticker' && !cropMode && !filterMode && !adjustMode && !aiMode}}"
+        class="paint-touch"
+        catchtouchstart="onStickerTouchStart"
+        catchtouchmove="onStickerTouchMove"
+        catchtouchend="onStickerTouchEnd"
+        catchtouchcancel="onStickerTouchEnd"
+      ></view>
+      <!-- 裁切框操作层：角手柄缩放 / 框内拖动移位 -->
+      <view
+        wx:if="{{cropMode}}"
+        class="crop-touch"
+        catchtouchstart="onCropTouchStart"
+        catchtouchmove="onCropTouchMove"
+        catchtouchend="onCropTouchEnd"
+        catchtouchcancel="onCropTouchEnd"
+      ></view>
+    </view>
+
+    <!-- 裁切框（四角白色括号 + 拖动九宫格）由 editor.js 的 drawCropOverlay() 直接绘制在
+         canvas 上：canvas 是原生组件、渲染层独立且层级恒高于普通节点（z-index 无效），
+         DOM 浮层会被图片盖住，因此不能用普通 view 承载裁切框。 -->
+
+    <!-- ========== 普通编辑底部工具区（进入裁切旋转 / 滤镜 / 增强 / AI 功能栏时整体下移隐退） ========== -->
+    <view
+      wx:if="{{!cropMode && !filterMode && !adjustMode && !aiMode}}"
+      class="edit-bottom {{bottomOut ? 'edit-bottom-out' : ''}}"
+    >
+      <!-- 历史与镜像：撤销 / 重做（左） · 镜像翻转（右） -->
+      <view class="eb-row">
+        <view class="eb-btn {{canUndo ? '' : 'eb-dis'}}" bindtap="onUndo">
+          <image class="eb-ic" src="{{ICON.undo}}" mode="aspectFit" />
+        </view>
+        <view class="eb-btn {{canRedo ? '' : 'eb-dis'}}" bindtap="onRedo">
+          <image class="eb-ic" src="{{ICON.redo}}" mode="aspectFit" />
+        </view>
+        <view class="eb-space"></view>
+        <view class="eb-btn" bindtap="onFlip">
+          <image class="eb-ic" src="{{ICON.flip}}" mode="aspectFit" />
+        </view>
+      </view>
+
+      <!-- 工具面板：文字（输入 → 添加，之后在图片上拖动定位） -->
+      <view wx:if="{{panel==='text'}}" class="panel">
+        <view class="p-row">
+          <input
+            class="text-input"
+            value="{{textInput}}"
+            placeholder="输入文字"
+            placeholder-class="text-ph"
+            maxlength="20"
+            confirm-type="done"
+            bindinput="onTextInput"
+            bindconfirm="onTextAdd"
+          />
+          <view class="act-btn act-btn-lg" bindtap="onTextAdd">添加</view>
+        </view>
+        <view class="p-row">
+          <view
+            wx:for="{{textColors}}"
+            wx:key="*this"
+            class="dot {{textColor===item ? 'dot-on' : ''}}"
+            style="background: {{item}};"
+            data-color="{{item}}"
+            bindtap="onTextColor"
+          ></view>
+        </view>
+        <view class="p-row">
+          <view
+            wx:for="{{textSizes}}"
+            wx:key="*this"
+            class="size-item {{textSize===item ? 'size-on' : ''}}"
+            data-size="{{item}}"
+            bindtap="onTextSize"
+          >
+            <text class="size-txt" style="font-size: {{item * 2 + 14}}rpx;">A</text>
+          </view>
+          <view class="eb-space"></view>
+          <view class="act-btn" bindtap="onTextClear">清空</view>
+        </view>
+        <view class="p-row"><text class="panel-tip">添加后可直接在图片上拖动调整位置</text></view>
+      </view>
+
+      <!-- 工具面板：马赛克（在图片上涂抹打码） -->
+      <view wx:if="{{panel==='mosaic'}}" class="panel">
+        <view class="p-row">
+          <text class="adj-name">块级</text>
+          <view
+            wx:for="{{mosaicLevels}}"
+            wx:key="key"
+            class="chip {{mosaicLevel===item.key ? 'chip-on' : ''}}"
+            data-level="{{item.key}}"
+            bindtap="onMosaicLevel"
+          >{{item.name}}</view>
+          <view class="eb-space"></view>
+          <view class="act-btn" bindtap="onMosaicClear">清空</view>
+        </view>
+        <view class="p-row">
+          <text class="adj-name">笔刷</text>
+          <view
+            wx:for="{{mosaicSizes}}"
+            wx:key="*this"
+            class="size-item {{mosaicSize===item ? 'size-on' : ''}}"
+            data-size="{{item}}"
+            bindtap="onMosaicSize"
+          >
+            <view class="size-dot" style="width: {{item}}rpx; height: {{item}}rpx;"></view>
+          </view>
+        </view>
+        <view class="p-row"><text class="panel-tip">在图片上涂抹即可打马赛克</text></view>
+      </view>
+
+      <!-- 工具面板：贴纸（后端下发的贴纸资源，点一下加到图片中心，可在图片上拖动定位） -->
+      <view wx:if="{{panel==='sticker'}}" class="panel">
+        <view class="p-row">
+          <scroll-view class="p-scroll" scroll-x enable-flex show-scrollbar="{{false}}">
+            <view class="stk-cats">
+              <view
+                wx:for="{{stickerCats}}"
+                wx:key="*this"
+                class="chip {{stickerCat===item ? 'chip-on' : ''}}"
+                data-cat="{{item}}"
+                bindtap="onStickerCat"
+              >{{item}}</view>
+            </view>
+          </scroll-view>
+        </view>
+        <scroll-view class="stk-scroll" scroll-x enable-flex show-scrollbar="{{false}}">
+          <view class="stk-list">
+            <view
+              wx:for="{{stickerList}}"
+              wx:key="id"
+              class="stk-item"
+              data-id="{{item.id}}"
+              bindtap="onStickerAdd"
+              hover-class="stk-hover"
+            >
+              <image class="stk-img" src="{{item.src}}" mode="aspectFit" />
+            </view>
+          </view>
+        </scroll-view>
+        <view class="p-row">
+          <text class="panel-tip">{{stickerList.length ? '点一下加到图片中心，可直接在图片上拖动调整位置' : (stickerLoaded ? '暂无贴纸资源' : '贴纸加载中…')}}</text>
+        </view>
+      </view>
+
+      <!-- 工具面板：涂鸦 -->
+      <view wx:if="{{panel==='doodle'}}" class="panel">
+        <view class="p-row">
+          <view
+            wx:for="{{penColors}}"
+            wx:key="*this"
+            class="dot {{penColor===item ? 'dot-on' : ''}}"
+            style="background: {{item}};"
+            data-color="{{item}}"
+            bindtap="onPenColor"
+          ></view>
+        </view>
+        <view class="p-row">
+          <view
+            wx:for="{{penSizes}}"
+            wx:key="*this"
+            class="size-item {{penSize===item ? 'size-on' : ''}}"
+            data-size="{{item}}"
+            bindtap="onPenSize"
+          >
+            <view class="size-dot" style="width: {{item}}rpx; height: {{item}}rpx;"></view>
+          </view>
+          <view class="eb-space"></view>
+          <view class="act-btn" bindtap="onDoodleClear">清空</view>
+        </view>
+      </view>
+
+      <!-- 工具行：基础 8 个圆形工具（美化/裁切旋转/滤镜/增强/涂鸦/文字/贴纸/马赛克）。
+           一屏放不下，改为横向滚动：图标与文字保持原尺寸，向左滑动即可看到被遮挡的工具 -->
+      <scroll-view
+        wx:if="{{editTab==='basic'}}"
+        class="tool-scroll"
+        scroll-x
+        enable-flex
+        show-scrollbar="{{false}}"
+      >
+        <view class="tool-row tool-row-scroll">
+          <view class="tool-item" bindtap="onBeautify">
+            <view class="tool-btn">
+              <image class="tool-ic" src="{{ICON.sparkle}}" mode="aspectFit" />
+            </view>
+            <text class="tool-label">一键美化</text>
+          </view>
+          <view class="tool-item" data-panel="crop" bindtap="togglePanel">
+            <view class="tool-btn">
+              <image class="tool-ic" src="{{ICON.crop}}" mode="aspectFit" />
+            </view>
+            <text class="tool-label">裁切旋转</text>
+          </view>
+          <view class="tool-item" data-panel="filter" bindtap="togglePanel">
+            <view class="tool-btn">
+              <image class="tool-ic" src="{{ICON.filterCircle}}" mode="aspectFit" />
+            </view>
+            <text class="tool-label">滤镜</text>
+          </view>
+          <view class="tool-item" data-panel="adjust" bindtap="togglePanel">
+            <view class="tool-btn {{adjustMode ? 'tool-on' : ''}}">
+              <image class="tool-ic" src="{{ICON.tune}}" mode="aspectFit" />
+            </view>
+            <text class="tool-label">增强</text>
+          </view>
+          <view class="tool-item" data-panel="doodle" bindtap="togglePanel">
+            <view class="tool-btn {{panel==='doodle' ? 'tool-on' : ''}}">
+              <image class="tool-ic" src="{{ICON.brush}}" mode="aspectFit" />
+            </view>
+            <text class="tool-label">涂鸦</text>
+          </view>
+          <view class="tool-item" data-panel="text" bindtap="togglePanel">
+            <view class="tool-btn {{panel==='text' ? 'tool-on' : ''}}">
+              <image class="tool-ic" src="{{ICON.text}}" mode="aspectFit" />
+            </view>
+            <text class="tool-label">文字</text>
+          </view>
+          <view class="tool-item" data-panel="mosaic" bindtap="togglePanel">
+            <view class="tool-btn {{panel==='mosaic' ? 'tool-on' : ''}}">
+              <image class="tool-ic" src="{{ICON.mosaic}}" mode="aspectFit" />
+            </view>
+            <text class="tool-label">马赛克</text>
+          </view>
+          <view class="tool-item" data-panel="sticker" bindtap="togglePanel">
+            <view class="tool-btn {{panel==='sticker' ? 'tool-on' : ''}}">
+              <image class="tool-ic" src="{{ICON.sticker}}" mode="aspectFit" />
+            </view>
+            <text class="tool-label">贴纸</text>
+          </view>
+        </view>
+      </scroll-view>
+
+      <!-- 工具行：AI 创作 6 个能力（点击打开对应 AI 功能栏，见 editor.js enterAi()）。
+           结构与「基础」工具行逐字一致（逐项手写、图标写死，不用 wx:for / 动态取图标）；
+           能力由 4 项增到 6 项后一屏放不下，故与基础工具行**共用同一套横向滚动类**
+           （.tool-scroll / .tool-row-scroll），向左滑动即可看到被遮挡的能力 -->
+      <scroll-view
+        wx:if="{{editTab==='ai'}}"
+        class="tool-scroll"
+        scroll-x
+        enable-flex
+        show-scrollbar="{{false}}"
+      >
+        <view class="tool-row tool-row-scroll">
+          <view class="tool-item" data-ability="matting" bindtap="onAiToolTap">
+            <view class="tool-btn {{aiLoading ? 'tool-dis' : ''}}">
+              <image class="tool-ic" src="{{ICON.aiMatting}}" mode="aspectFit" />
+            </view>
+            <text class="tool-label">智能抠图</text>
+          </view>
+          <view class="tool-item" data-ability="style" bindtap="onAiToolTap">
+            <view class="tool-btn {{aiLoading ? 'tool-dis' : ''}}">
+              <image class="tool-ic" src="{{ICON.aiStyle}}" mode="aspectFit" />
+            </view>
+            <text class="tool-label">风格迁移</text>
+          </view>
+          <view class="tool-item" data-ability="enhance" bindtap="onAiToolTap">
+            <view class="tool-btn {{aiLoading ? 'tool-dis' : ''}}">
+              <image class="tool-ic" src="{{ICON.aiEnhance}}" mode="aspectFit" />
+            </view>
+            <text class="tool-label">画质修复</text>
+          </view>
+          <view class="tool-item" data-ability="beauty" bindtap="onAiToolTap">
+            <view class="tool-btn {{aiLoading ? 'tool-dis' : ''}}">
+              <image class="tool-ic" src="{{ICON.aiBeauty}}" mode="aspectFit" />
+            </view>
+            <text class="tool-label">AI美颜</text>
+          </view>
+          <view class="tool-item" data-ability="background" bindtap="onAiToolTap">
+            <view class="tool-btn {{aiLoading ? 'tool-dis' : ''}}">
+              <image class="tool-ic" src="{{ICON.aiBackground}}" mode="aspectFit" />
+            </view>
+            <text class="tool-label">换背景</text>
+          </view>
+          <view class="tool-item" data-ability="hair" bindtap="onAiToolTap">
+            <view class="tool-btn {{aiLoading ? 'tool-dis' : ''}}">
+              <image class="tool-ic" src="{{ICON.aiHair}}" mode="aspectFit" />
+            </view>
+            <text class="tool-label">发型发色</text>
+          </view>
+        </view>
+      </scroll-view>
+
+      <!-- 底部 Tab：基础 / AI创作（带按压反馈，便于确认点击已生效） -->
+      <view class="tab-row">
+        <view
+          class="tab-item {{editTab==='basic' ? 'tab-on' : ''}}"
+          data-tab="basic"
+          bindtap="onEditTab"
+          hover-class="tab-hover"
+        >
+          基础
+        </view>
+        <view
+          class="tab-item {{editTab==='ai' ? 'tab-on' : ''}}"
+          data-tab="ai"
+          bindtap="onEditTab"
+          hover-class="tab-hover"
+        >
+          AI创作
+        </view>
+      </view>
+    </view>
+
+    <!-- ========== 裁切旋转功能栏（自下方向上滑入 / 下移退场） ========== -->
+    <view wx:if="{{cropMode}}" class="mode-bottom {{cropOut ? 'mode-bottom-out' : ''}}">
+      <!-- 角度微调刻度盘：左「镜像」· 中圆弧刻度盘 · 右「旋转」 -->
+      <view class="cro-slider-row">
+        <view class="cro-side-btn" bindtap="onCropFlip" hover-class="mode-hover">
+          <image class="cro-side-ic" src="{{ICON.flip}}" mode="aspectFit" />
+        </view>
+        <!-- 角度刻度盘（自定义组件）：向下凹的圆弧刻度 + 固定黄色游标，
+             横向拖动滚动刻度盘，changing/change 事件抛出角度 -->
+        <angle-ruler
+          class="cro-ruler"
+          value="{{fineAngle}}"
+          min="{{-cropAngleRange}}"
+          max="{{cropAngleRange}}"
+          bind:changing="onAngleChanging"
+          bind:change="onAngleChange"
+        />
+        <view class="cro-side-btn" bindtap="onCropRotate" hover-class="mode-hover">
+          <image class="cro-side-ic" src="{{ICON.rotate}}" mode="aspectFit" />
+        </view>
+      </view>
+
+      <!-- 比例预设：自由 / 原始 / 全屏 / 横向全屏 / 1:1 …（横向滚动） -->
+      <scroll-view class="cro-ratio-scroll" scroll-x enable-flex show-scrollbar="{{false}}">
+        <view class="cro-ratios">
+          <view
+            wx:for="{{cropRatios}}"
+            wx:key="key"
+            class="cro-ratio {{cropRatio===item.key ? 'cro-ratio-on' : ''}}"
+            data-ratio="{{item.key}}"
+            bindtap="onRatio"
+          >
+            <image
+              class="cro-ratio-ic"
+              src="{{cropRatio===item.key ? item.icon.on : item.icon.off}}"
+              mode="aspectFit"
+            />
+            <text class="cro-ratio-name">{{item.name}}</text>
+          </view>
+        </view>
+      </scroll-view>
+
+      <!-- 取消 × / 确认 ✓ -->
+      <view class="mode-bar">
+        <view class="mode-bar-btn" bindtap="onCropCancel" hover-class="mode-hover">
+          <image class="mode-bar-ic" src="{{ICON.close}}" mode="aspectFit" />
+        </view>
+        <view class="mode-bar-btn" bindtap="onCropApply" hover-class="mode-hover">
+          <image class="mode-bar-ic" src="{{ICON.check}}" mode="aspectFit" />
+        </view>
+      </view>
+    </view>
+
+    <!-- ========== 滤镜功能栏（自下方向上滑入 / 下移退场） ========== -->
+    <view wx:if="{{filterMode}}" class="mode-bottom {{filterOut ? 'mode-bottom-out' : ''}}">
+      <!-- 滤镜分类：流行 / 经典 / 人像 / 美食 / 电影 / 旅行 -->
+      <scroll-view class="flt-cat-scroll" scroll-x enable-flex show-scrollbar="{{false}}">
+        <view class="flt-cats">
+          <view
+            wx:for="{{filterGroups}}"
+            wx:key="key"
+            class="flt-cat {{filterCat===item.key ? 'flt-cat-on' : ''}}"
+            data-cat="{{item.key}}"
+            bindtap="onFilterCat"
+          >{{item.name}}</view>
+        </view>
+      </scroll-view>
+
+      <!-- 滤镜预览：直接用当前底图按 CSS filter 实时呈现（并跟随旋转/镜像） -->
+      <scroll-view class="flt-list-scroll" scroll-x enable-flex show-scrollbar="{{false}}">
+        <view class="flt-list">
+          <view
+            wx:for="{{filterItems}}"
+            wx:key="key"
+            class="flt-item"
+            data-key="{{item.key}}"
+            bindtap="onFilterPick"
+          >
+            <view class="flt-thumb {{filter===item.key ? 'flt-thumb-on' : ''}}">
+              <image
+                class="flt-thumb-img"
+                src="{{filterSrc}}"
+                mode="aspectFill"
+                style="filter: {{item.value}}; transform: {{filterTransform}};"
+              />
+            </view>
+            <text class="flt-name {{filter===item.key ? 'flt-name-on' : ''}}">{{item.name}}</text>
+          </view>
+        </view>
+      </scroll-view>
+
+      <!-- 取消 × / 确认 ✓ -->
+      <view class="mode-bar">
+        <view class="mode-bar-btn" bindtap="onFilterCancel" hover-class="mode-hover">
+          <image class="mode-bar-ic" src="{{ICON.close}}" mode="aspectFit" />
+        </view>
+        <view class="mode-bar-btn" bindtap="onFilterApply" hover-class="mode-hover">
+          <image class="mode-bar-ic" src="{{ICON.check}}" mode="aspectFit" />
+        </view>
+      </view>
+    </view>
+
+    <!-- ========== 增强功能栏（自下方向上滑入 / 下移退场；交互与裁切旋转、滤镜一致） ========== -->
+    <view wx:if="{{adjustMode}}" class="mode-bottom {{adjustOut ? 'mode-bottom-out' : ''}}">
+      <!-- 单项滑杆：居中为默认值，向左减弱 / 向右增强（当前参数项实时生效） -->
+      <view class="adj-slider-row">
+        <slider
+          class="adj-slider-main"
+          min="{{adjMin}}"
+          max="{{adjMax}}"
+          step="1"
+          value="{{adjValue}}"
+          block-size="22"
+          activeColor="#ffcd3c"
+          backgroundColor="#3a3a3c"
+          data-key="{{adjKey}}"
+          bindchanging="onAdjust"
+          bindchange="onAdjustCommit"
+        />
+        <text class="adj-value">{{adjValText}}</text>
+      </view>
+
+      <!-- 参数项：横向滚动；选中项为琥珀色方块（图标 + 名称两态切换） -->
+      <scroll-view class="adj-item-scroll" scroll-x enable-flex show-scrollbar="{{false}}">
+        <view class="adj-items">
+          <view
+            wx:for="{{adjItems}}"
+            wx:key="key"
+            class="adj-item {{adjKey===item.key ? 'adj-item-on' : ''}}"
+            data-key="{{item.key}}"
+            bindtap="onAdjustPick"
+          >
+            <image
+              class="adj-item-ic"
+              src="{{adjKey===item.key ? item.icon.on : item.icon.off}}"
+              mode="aspectFit"
+            />
+            <text class="adj-item-name">{{item.name}}</text>
+          </view>
+        </view>
+      </scroll-view>
+
+      <!-- 取消 × / 确认 ✓ -->
+      <view class="mode-bar">
+        <view class="mode-bar-btn" bindtap="onAdjustCancel" hover-class="mode-hover">
+          <image class="mode-bar-ic" src="{{ICON.close}}" mode="aspectFit" />
+        </view>
+        <view class="mode-bar-btn" bindtap="onAdjustApply" hover-class="mode-hover">
+          <image class="mode-bar-ic" src="{{ICON.check}}" mode="aspectFit" />
+        </view>
+      </view>
+    </view>
+
+    <!-- ========== AI 功能栏（智能抠图 / 风格迁移 / 画质修复 / AI美颜）==========
+         与裁切旋转 / 滤镜 / 增强同一套「上滑显现 + 居中标题 + ×/✓」交互与样式：
+         顶部标题为当前能力名，栏内为能力说明卡（+ 风格迁移的风格胶囊），点 ✓ 才真正执行 -->
+    <view wx:if="{{aiMode}}" class="mode-bottom {{aiOut ? 'mode-bottom-out' : ''}} {{directEntry ? 'mode-bottom-still' : ''}}">
+      <!-- 能力说明卡：图标 + 名称 + 一句话说明 + 处理要点胶囊 -->
+      <view class="ai-card">
+        <view class="ai-card-head">
+          <image class="ai-card-ic" src="{{aiInfo.icon}}" mode="aspectFit" />
+          <text class="ai-card-name">{{aiInfo.name}}</text>
+        </view>
+        <text class="ai-card-desc">{{aiInfo.desc}}</text>
+        <view class="ai-card-tips">
+          <text class="ai-tip" wx:for="{{aiInfo.tips}}" wx:key="*this">{{item}}</text>
+        </view>
+      </view>
+
+      <!-- 风格迁移：可选风格（胶囊行，与涂鸦块级 / 首页风格胶囊同一套样式） -->
+      <scroll-view wx:if="{{aiAbility==='style'}}" class="p-scroll" scroll-x enable-flex show-scrollbar="{{false}}">
+        <view class="ratio-row">
+          <view
+            wx:for="{{aiStyles}}"
+            wx:key="*this"
+            class="chip {{aiStyle===item ? 'chip-on' : ''}}"
+            data-style="{{item}}"
+            bindtap="onAiStyle"
+          >{{item}}</view>
+        </view>
+      </scroll-view>
+
+      <!-- 今日额度（进入功能栏时查询一次 GET /api/ai/quota；查询失败则为空、不显示，不阻塞主流程） -->
+      <view wx:if="{{aiQuotaText}}" class="ai-quota">
+        <text class="ai-quota-text">{{aiQuotaText}}</text>
+      </view>
+
+      <view class="ai-note">
+        <!-- 不可提交（今日额度用完 / 未配置密钥）时直接说明原因，否则给正常执行说明 -->
+        <text wx:if="{{aiBlockReason}}" class="ai-note-text ai-note-warn">{{aiBlockReason}}</text>
+        <text wx:else class="ai-note-text">点 ✓ 开始处理（通常十余秒，用时会显示在提示框里）：结果只作为新的底图继续编辑，点右上角「保存」才会存入「我的作品」</text>
+      </view>
+
+      <!-- 取消 × / 确认 ✓（处理中或不可提交时确认按钮置灰，避免重复触发） -->
+      <view class="mode-bar">
+        <view class="mode-bar-btn" bindtap="onAiCancel" hover-class="mode-hover">
+          <image class="mode-bar-ic" src="{{ICON.close}}" mode="aspectFit" />
+        </view>
+        <view
+          class="mode-bar-btn {{(aiLoading || aiBlockReason) ? 'mode-dis' : ''}}"
+          bindtap="onAiApply"
+          hover-class="mode-hover"
+        >
+          <image class="mode-bar-ic" src="{{ICON.check}}" mode="aspectFit" />
+        </view>
+      </view>
+    </view>
+  </block>
+
+  <!-- ================= 第二层：查看操作（图片2） ================= -->
+  <block wx:if="{{layer==='viewer'}}">
+    <view class="viewer-head" style="padding-top: {{topPadding}}px;">
+      <view class="vh-back" bindtap="onBack">
+        <image class="vh-ic" src="{{ICON.back}}" mode="aspectFit" />
+      </view>
+      <view class="vh-title">
+        <text class="vh-date">{{shootDate}}</text>
+        <text class="vh-time">{{shootTime}}</text>
+      </view>
+      <view class="vh-album" bindtap="onPickImage">
+        <image class="vh-ic" src="{{ICON.album}}" mode="aspectFit" />
+      </view>
+    </view>
+
+    <view class="anchor">
+      <!-- 同 preview / edit 层：转场与首帧解码期间由 DOM 占位图显示照片（见 M64） -->
+      <image wx:if="{{pendingPreview}}" class="anchor-photo" src="{{pendingPreview}}" mode="aspectFit" bindload="onPreviewPhotoLoad" />
+    </view>
+
+    <view class="viewer-bar">
+      <view class="vb-item" bindtap="onDownload">
+        <image class="vb-ic" src="{{ICON.download}}" mode="aspectFit" />
+        <text class="vb-label">下载</text>
+      </view>
+      <view class="vb-item" bindtap="onEnterEdit">
+        <image class="vb-ic" src="{{ICON.edit}}" mode="aspectFit" />
+        <text class="vb-label">编辑</text>
+      </view>
+      <view class="vb-item" bindtap="onFavorite">
+        <image class="vb-ic" src="{{favorited?ICON.heartFill:ICON.heart}}" mode="aspectFit" />
+        <text class="vb-label">收藏</text>
+      </view>
+      <view class="vb-item" bindtap="onDelete">
+        <image class="vb-ic" src="{{ICON.trash}}" mode="aspectFit" />
+        <text class="vb-label">删除</text>
+      </view>
+      <view class="vb-item" bindtap="onMore">
+        <image class="vb-ic" src="{{ICON.more}}" mode="aspectFit" />
+        <text class="vb-label">更多</text>
+      </view>
+    </view>
+  </block>
+
+  <!-- 未选图占位（入口直传图片时整个转场期不显示，保持纯黑沉浸） -->
+  <view wx:if="{{!imagePath && !hasPendingPath}}" class="placeholder" bindtap="onPickImage">
+    <text class="placeholder-text">点击选择图片</text>
+  </view>
+</view>

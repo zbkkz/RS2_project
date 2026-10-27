@@ -1,0 +1,516 @@
+/**pages/mine/mine.wxss**/
+page {
+  height: 100vh;
+  background: linear-gradient(108deg, #eac4eb 0%, #bd8ed4 26%, #8463ac 52%, #4a3d7c 78%, #29234f 100%);
+}
+
+/* 背景装饰光斑（固定不滚动）：左侧粉白高光，右下深蓝压暗 */
+.glow {
+  position: fixed;
+  border-radius: 50%;
+  z-index: 0;
+  pointer-events: none;
+}
+.glow-a {
+  width: 620rpx;
+  height: 620rpx;
+  top: 6%;
+  left: -240rpx;
+  background: radial-gradient(circle, rgba(255, 234, 252, 0.55), rgba(255, 234, 252, 0) 70%);
+}
+.glow-b {
+  width: 560rpx;
+  height: 560rpx;
+  bottom: -8%;
+  right: -200rpx;
+  background: radial-gradient(circle, rgba(24, 18, 52, 0.45), rgba(24, 18, 52, 0) 70%);
+}
+
+.page-root {
+  /* 外层固定占满视口：不依赖 page 的百分比解析（Skyline 下 height:100% 可能解析不出）；
+     顶部 / 底部安全区的让位分别由 inline 的 padding-top / padding-bottom 完成 */
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+}
+/* 滚动区撑满外层扣除 padding 后的剩余空间：底部 padding = 底部导航真实占位（inline 传入），
+   所以滚到底时最后一行正好停在导航栏上沿。
+   「根节点定高 + 滚动区 flex:1」是聊天页已验证可用的做法（见 README 11.3 第 29 条）；
+   不要指望直接给 scroll-view 写 height —— Skyline 下它拿不到确定高度就不滚动。 */
+.scrollarea {
+  flex: 1;
+  overflow-y: hidden;
+}
+.page {
+  padding: 0 28rpx;
+  box-sizing: border-box;
+}
+
+/* ===== 页头 ===== */
+.page-header {
+  padding: 20rpx 4rpx 0;
+  display: flex;
+  flex-direction: column;
+}
+.page-title {
+  font-size: 44rpx;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+/* ===== 卡片通用 ===== */
+.card {
+  background: rgba(255, 255, 255, 0.94);
+  border-radius: 30rpx;
+  box-shadow: 0 12rpx 32rpx rgba(76, 29, 149, 0.16);
+  box-sizing: border-box;
+}
+.btn-hover {
+  opacity: 0.75;
+}
+
+/* ===== 资料卡 ===== */
+.profile-card {
+  margin-top: 30rpx;
+  padding: 32rpx 28rpx;
+  display: flex;
+  align-items: center;
+}
+.profile-avatar {
+  width: 120rpx;
+  height: 120rpx;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #a86bff 0%, #8b5cf6 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.profile-avatar-img {
+  width: 100%;
+  height: 100%;
+}
+.profile-avatar-default {
+  width: 64rpx;
+  height: 64rpx;
+}
+.profile-info {
+  flex: 1;
+  margin-left: 24rpx;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.profile-name {
+  font-size: 34rpx;
+  font-weight: 700;
+  color: #33245c;
+}
+.profile-sub {
+  margin-top: 6rpx;
+  font-size: 24rpx;
+  color: #9a8bb8;
+}
+.profile-edit {
+  width: 64rpx;
+  height: 64rpx;
+  border-radius: 50%;
+  background: #f3e8ff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.profile-edit-icon {
+  width: 32rpx;
+  height: 32rpx;
+}
+
+/* ===== 统计行 ===== */
+.stats-row {
+  margin-top: 20rpx;
+  display: flex;
+}
+.stat-item {
+  flex: 1;
+  height: 140rpx;
+  border-radius: 26rpx;
+  background: rgba(255, 255, 255, 0.16);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+.stat-right {
+  margin-left: 20rpx;
+}
+.stat-num {
+  font-size: 40rpx;
+  font-weight: 700;
+  color: #ffffff;
+}
+.stat-label {
+  margin-top: 8rpx;
+  font-size: 24rpx;
+  color: rgba(255, 255, 255, 0.75);
+}
+
+/* ===== 今日 AI 额度（一个整体额度 + 一条剩余进度条） ===== */
+.quota-card {
+  margin-top: 20rpx;
+  padding: 24rpx 28rpx;
+}
+.quota-head {
+  display: flex;
+  flex-direction: row;
+  align-items: baseline;
+  justify-content: space-between;
+}
+.quota-title {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #1f2329;
+}
+.quota-sub {
+  font-size: 22rpx;
+  color: #8a93a6;
+}
+.quota-tip {
+  font-size: 24rpx;
+  color: #8a93a6;
+  padding: 8rpx 0;
+}
+/* 剩余占比：大号数字（百分比），进度条填充也是同一个值 */
+.quota-remain-row {
+  display: flex;
+  flex-direction: row;
+  align-items: baseline;
+  padding: 18rpx 0 0;
+}
+.quota-remain {
+  font-size: 56rpx;
+  font-weight: 700;
+  line-height: 1;
+  color: #7c3aed;
+}
+/* 百分号紧贴数字、与数字同色同档（数字与 % 一起读作 "100%"） */
+.quota-remain-unit {
+  margin-left: 4rpx;
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #7c3aed;
+}
+/* 进度条：填充宽度 = 剩余占比（用掉越多越短），配色随剩余比例下移 */
+.quota-bar {
+  margin-top: 16rpx;
+  height: 16rpx;
+  border-radius: 8rpx;
+  background: #eef0f5;
+  overflow: hidden;
+}
+.quota-bar-fill {
+  height: 100%;
+  border-radius: 8rpx;
+  transition: width 0.3s ease;
+}
+.quota-bar-high {
+  background: linear-gradient(90deg, #7c3aed, #a855f7);
+}
+.quota-bar-mid {
+  background: linear-gradient(90deg, #f59e0b, #fbbf24);
+}
+.quota-bar-low {
+  background: linear-gradient(90deg, #ef4444, #f87171);
+}
+/* 剩余告急时数字同步变色，避免"只剩几次"却毫无提示。
+   high 档显式写出（与 .quota-remain 同色），保证三档都有对应类，不靠"未定义即默认" */
+.quota-remain-high {
+  color: #7c3aed;
+}
+.quota-remain-mid {
+  color: #d48806;
+}
+.quota-remain-low {
+  color: #e02e2e;
+}
+/* 6 个图像能力：三列 flex 网格（`display: grid` 在 Skyline 下不生效，见 11.3 第 29 条） */
+.quota-grid {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  margin-top: 20rpx;
+  padding-top: 16rpx;
+  border-top: 2rpx solid #f0f2f7;
+}
+.quota-cell {
+  width: 33.33%;
+  box-sizing: border-box;
+  padding: 10rpx 0;
+  display: flex;
+  flex-direction: column;
+}
+.quota-cell-name {
+  font-size: 22rpx;
+  color: #6b7280;
+}
+.quota-cell-num {
+  margin-top: 4rpx;
+  font-size: 26rpx;
+  font-weight: 600;
+  color: #1f2329;
+}
+/* 对话三个用途（复用同一张卡内的分组边框） */
+.quota-rows {
+  margin-top: 6rpx;
+  padding-top: 8rpx;
+  border-top: 2rpx solid #f0f2f7;
+}
+.quota-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10rpx 0;
+}
+.quota-row-name {
+  font-size: 24rpx;
+  color: #4b5563;
+}
+.quota-row-num {
+  font-size: 24rpx;
+  font-weight: 600;
+  color: #1f2329;
+}
+.quota-foot {
+  display: flex;
+  flex-direction: column;
+  margin-top: 14rpx;
+}
+.quota-foot-text {
+  font-size: 22rpx;
+  color: #8a93a6;
+  line-height: 1.6;
+}
+
+/* ===== 功能菜单 ===== */
+.menu-card {
+  margin-top: 20rpx;
+  padding: 8rpx 28rpx;
+}
+.menu-row {
+  height: 104rpx;
+  display: flex;
+  align-items: center;
+  border-bottom: 1rpx solid rgba(132, 99, 172, 0.12);
+}
+.menu-row-last {
+  border-bottom: none;
+}
+.menu-hover {
+  opacity: 0.6;
+}
+.menu-icon {
+  width: 44rpx;
+  height: 44rpx;
+}
+.menu-text {
+  flex: 1;
+  margin-left: 20rpx;
+  font-size: 30rpx;
+  color: #33245c;
+}
+.menu-chevron {
+  width: 36rpx;
+  height: 36rpx;
+}
+
+/* ===== 退出登录 ===== */
+.logout-btn {
+  margin-top: 20rpx;
+  height: 100rpx;
+  border-radius: 26rpx;
+  background: rgba(255, 255, 255, 0.16);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.logout-icon {
+  width: 38rpx;
+  height: 38rpx;
+}
+.logout-text {
+  margin-left: 12rpx;
+  font-size: 30rpx;
+  font-weight: 600;
+  color: #ff6b81;
+}
+
+/* ===== 弹层（对齐登录页忘记密码弹层） ===== */
+.modal-mask {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(40, 45, 70, 0.35);
+}
+.modal-card {
+  width: 600rpx;
+  padding: 44rpx 40rpx 36rpx;
+  border-radius: 40rpx;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 20rpx 60rpx rgba(76, 29, 149, 0.35);
+  animation: modal-pop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+  box-sizing: border-box;
+}
+@keyframes modal-pop {
+  from { transform: scale(0.86); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+.modal-title {
+  font-size: 34rpx;
+  font-weight: 700;
+  color: #33245c;
+  text-align: center;
+}
+
+/* 编辑资料：头像 */
+.edit-avatar-wrap {
+  margin-top: 36rpx;
+  position: relative;
+  width: 160rpx;
+  height: 160rpx;
+  margin-left: auto;
+  margin-right: auto;
+}
+.edit-avatar {
+  width: 160rpx;
+  height: 160rpx;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #a86bff 0%, #8b5cf6 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+.edit-avatar-img {
+  width: 100%;
+  height: 100%;
+}
+.edit-avatar-default {
+  width: 84rpx;
+  height: 84rpx;
+}
+.edit-avatar-badge {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 52rpx;
+  height: 52rpx;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #f857a6 0%, #a86bff 100%);
+  border: 4rpx solid #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+}
+.edit-avatar-badge-icon {
+  width: 28rpx;
+  height: 28rpx;
+}
+
+/* 编辑资料：昵称输入 */
+.edit-field {
+  margin-top: 36rpx;
+}
+.edit-label {
+  font-size: 26rpx;
+  color: #9a8bb8;
+}
+.edit-input {
+  margin-top: 12rpx;
+  height: 88rpx;
+  border-radius: 20rpx;
+  background: rgba(132, 99, 172, 0.08);
+  padding: 0 24rpx;
+  font-size: 30rpx;
+  color: #33245c;
+  box-sizing: border-box;
+}
+.edit-placeholder {
+  color: rgba(154, 139, 184, 0.6);
+}
+
+/* 弹层按钮 */
+.modal-actions {
+  display: flex;
+  margin-top: 40rpx;
+}
+.modal-cancel {
+  flex: 1;
+  height: 84rpx;
+  line-height: 84rpx;
+  margin-right: 20rpx;
+  border-radius: 42rpx;
+  background: rgba(132, 99, 172, 0.12);
+  color: #33245c;
+  font-size: 30rpx;
+}
+.modal-cancel::after {
+  border: none;
+}
+.modal-confirm {
+  flex: 1;
+  height: 84rpx;
+  line-height: 84rpx;
+  border-radius: 42rpx;
+  background: linear-gradient(90deg, #f857a6 0%, #a86bff 100%);
+  color: #ffffff;
+  font-size: 30rpx;
+  font-weight: 600;
+  box-shadow: 0 12rpx 28rpx rgba(232, 90, 203, 0.35);
+}
+.modal-confirm::after {
+  border: none;
+}
+
+/* 关于弹层 */
+.about-version {
+  margin-top: 28rpx;
+  font-size: 26rpx;
+  color: #9a8bb8;
+  text-align: center;
+}
+.about-desc {
+  margin-top: 16rpx;
+  font-size: 30rpx;
+  color: #33245c;
+  text-align: center;
+}
+.about-tech {
+  margin-top: 12rpx;
+  font-size: 24rpx;
+  color: #9a8bb8;
+  text-align: center;
+}
+.about-ok {
+  flex: none;
+  width: 100%;
+}
+
+/* 底部导航的净空已由 .page-root 的 padding-bottom 按真实高度扣除，这里只留一点呼吸留白 */
+.bottom-spacer {
+  height: 24rpx;
+}

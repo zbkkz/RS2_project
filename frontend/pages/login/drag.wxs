@@ -1,0 +1,78 @@
+// pages/login/drag.wxs
+// 物品拖动（视图层直接响应，避免逻辑层 setData 造成卡顿）：
+// 拖动跟手 + 粉紫方块镜头注视跟随 + 松手弹簧回弹，全程无 setData。
+// 方块中心与注视幅度由页面 JS 测量后经 dataset 传入（Skyline 下 WXS 内测量不稳定），
+// 镜头节点按页面级 id 查询，逐步判空，任一环节失败都不会中断拖动主路径。
+var startX = 0
+var startY = 0
+var pos = null        // 当前拖动的 .float-pos 节点（控制层级）
+var item = null       // 当前拖动的 .float-item 节点（控制位移）
+var pupil = null      // 镜头圆盘节点（#pupil）
+var cubeCX = 0        // 方块中心（px，页面 JS 测量后经 data-cx/cy 传入）
+var cubeCY = 0
+var gazeAmp = 4.5     // 注视幅度（px，约 9rpx，经 data-amp 传入）
+
+function touchstart(e, ownerInstance) {
+  var t = e.touches[0]
+  startX = t.clientX
+  startY = t.clientY
+  var ds = e.currentTarget.dataset
+  var idx = ds.index
+  if (ds.cx) cubeCX = ds.cx
+  if (ds.cy) cubeCY = ds.cy
+  if (ds.amp) gazeAmp = ds.amp
+  item = ownerInstance.selectComponent('#item-' + idx)
+  pos = ownerInstance.selectComponent('#pos-' + idx)
+  // 拖动提到顶层（盖过登录卡片），并清除回弹过渡保证跟手
+  if (pos) {
+    pos.setStyle({ 'z-index': 30 })
+  }
+  if (item) {
+    item.setStyle({ transition: 'none' })
+  }
+  pupil = ownerInstance.selectComponent('#pupil')
+}
+
+function touchmove(e, ownerInstance) {
+  if (!item) return
+  var t = e.touches[0]
+  var dx = t.clientX - startX
+  var dy = t.clientY - startY
+  item.setStyle({ transform: 'translate(' + dx + 'px,' + dy + 'px)' })
+  // 镜头圆盘朝触点方向偏移（固定幅度注视物品方向，非镜像拖动增量）
+  if (!pupil) pupil = ownerInstance.selectComponent('#pupil')
+  if (pupil && cubeCX > 0) {
+    var vx = t.clientX - cubeCX
+    var vy = t.clientY - cubeCY
+    var len = Math.sqrt(vx * vx + vy * vy)
+    if (len < 1) len = 1
+    pupil.setStyle({
+      transform: 'translate(' + ((vx / len) * gazeAmp) + 'px,' + ((vy / len) * gazeAmp) + 'px)'
+    })
+  }
+}
+
+function touchend(e, ownerInstance) {
+  if (!item) return
+  // 弹簧回弹归位，镜头回中
+  item.setStyle({
+    transition: 'transform 0.65s cubic-bezier(0.3,1.9,0.5,1)',
+    transform: 'translate(0px,0px)'
+  })
+  if (pupil) {
+    pupil.setStyle({ transform: 'translate(0px,0px)' })
+  }
+  // 恢复原层级
+  if (pos) {
+    pos.setStyle({ 'z-index': 1 })
+  }
+  item = null
+  pos = null
+  pupil = null
+}
+
+module.exports = {
+  touchstart: touchstart,
+  touchmove: touchmove,
+  touchend: touchend
+}

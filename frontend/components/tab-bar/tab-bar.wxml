@@ -1,0 +1,21 @@
+<!--components/tab-bar/tab-bar.wxml-->
+<view class="tab-bar {{enter ? 'tab-enter' : ''}}">
+  <view class="tab-item {{active === 'home' ? 'active' : ''}}" data-key="home" bindtap="onTap" hover-class="tab-hover">
+    <view class="tab-icon-wrap">
+      <image class="tab-icon" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZmlsbD0iI2ZmZmZmZiIgZD0iTTEwIDIwdi02aDR2Nmg1di04aDNMMTIgMyAyIDEyaDN2OHoiLz48L3N2Zz4=" mode="aspectFit" />
+    </view>
+    <text class="tab-label">首页</text>
+  </view>
+  <view class="tab-item {{active === 'template' ? 'active' : ''}}" data-key="template" bindtap="onTap" hover-class="tab-hover">
+    <view class="tab-icon-wrap">
+      <image class="tab-icon" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZmlsbD0iI2ZmZmZmZiIgZD0iTTEyIDE3LjI3TDE4LjE4IDIxbC0xLjY0LTcuMDNMMjIgOS4yNGwtNy4xOS0uNjFMMTIgMiA5LjE5IDguNjMgMiA5LjI0bDUuNDYgNC43M0w1LjgyIDIxeiIvPjwvc3ZnPg==" mode="aspectFit" />
+    </view>
+    <text class="tab-label">模板</text>
+  </view>
+  <view class="tab-item {{active === 'mine' ? 'active' : ''}}" data-key="mine" bindtap="onTap" hover-class="tab-hover">
+    <view class="tab-icon-wrap">
+      <image class="tab-icon" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZmlsbD0iI2ZmZmZmZiIgZD0iTTEyIDEyYzIuMjEgMCA0LTEuNzkgNC00cy0xLjc5LTQtNC00LTQgMS43OS00IDQgMS43OSA0IDQgNHptMCAyYy0yLjY3IDAtOCAxLjM0LTggNHYyaDE2di0yYzAtMi42Ni01LjMzLTQtOC00eiIvPjwvc3ZnPg==" mode="aspectFit" />
+    </view>
+    <text class="tab-label">我的</text>
+  </view>
+</view>

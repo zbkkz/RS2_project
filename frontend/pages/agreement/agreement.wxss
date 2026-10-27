@@ -1,0 +1,53 @@
+/* pages/agreement/agreement.wxss */
+page {
+  height: 100vh;
+  background: #f7f8fc;
+}
+
+.agreement-scroll {
+  height: 100vh;
+  box-sizing: border-box;
+}
+
+.doc {
+  padding: 32rpx 40rpx 80rpx;
+}
+
+.doc-title {
+  font-size: 40rpx;
+  font-weight: 700;
+  color: #2b3a67;
+  text-align: center;
+}
+
+.doc-updated {
+  margin-top: 12rpx;
+  margin-bottom: 24rpx;
+  font-size: 22rpx;
+  color: rgba(43, 58, 103, 0.45);
+  text-align: center;
+}
+
+.sec {
+  margin-top: 28rpx;
+}
+
+.sec-title {
+  font-size: 30rpx;
+  font-weight: 600;
+  color: #2b3a67;
+}
+
+.sec-body {
+  margin-top: 10rpx;
+  font-size: 26rpx;
+  line-height: 1.8;
+  color: rgba(43, 51, 69, 0.85);
+}
+
+.doc-end {
+  margin-top: 40rpx;
+  font-size: 24rpx;
+  line-height: 1.8;
+  color: rgba(43, 58, 103, 0.45);
+}

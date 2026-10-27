@@ -1,0 +1,14 @@
+<!--components/angle-ruler/angle-ruler.wxml
+  圆弧角度标尺：刻度全部绘制在 canvas 上（游标固定、刻度盘滚动），
+  触摸事件挂在 canvas 上，横向拖动即滚动刻度盘。 -->
+<view class="ar-wrap">
+  <canvas
+    type="2d"
+    id="arCanvas"
+    class="ar-canvas"
+    catchtouchstart="onTouchStart"
+    catchtouchmove="onTouchMove"
+    catchtouchend="onTouchEnd"
+    catchtouchcancel="onTouchEnd"
+  ></canvas>
+</view>

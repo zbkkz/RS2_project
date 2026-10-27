@@ -1,0 +1,480 @@
+/* pages/camera/camera.wxss — 竖屏相机页（纯黑扁平 UI，9:19）
+  与 WXML 布局一一对应的纵向分区：纯黑顶条 → 实时取景(flex:1，占满剩余高度) → 倍率条 → 底部控制区。
+  控制区**不设固定高度、由内容撑开**（M53 删掉模式行 + 收缩快门行后，省下的高度全部归取景框，
+  取景区因此成为全页最大区块）；所有分区互不重叠，避免普通元素落入 <camera> 原生组件区域而被盖住
+  （WebView 下原生组件层级最高）。 */
+page {
+  background: #000000;
+  height: 100%;
+}
+
+.camera-page {
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: #000000;
+}
+
+/* ==== 顶部黑条：左上白色 × 关闭；右侧仅闪光灯一个黑色圆形按钮（原「设置」钮已删除） ==== */
+.top-strip {
+  width: 100%;
+  flex-shrink: 0;
+  box-sizing: border-box;
+  background: #000000; /* 不透明纯黑 */
+}
+
+.top-row {
+  height: 132rpx;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 40rpx;
+  box-sizing: border-box;
+}
+
+.btn-close {
+  width: 76rpx;
+  height: 76rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: rgba(28, 28, 30, 0.55); /* 深灰半透明圆形底，白色 × 清晰可读 */
+}
+
+.top-right {
+  display: flex;
+  align-items: center;
+}
+
+.circle-btn {
+  width: 76rpx;
+  height: 76rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #000000; /* 黑色圆形按钮 */
+  border-radius: 50%;
+  border: 2rpx solid rgba(255, 255, 255, 0.16); /* 纯黑背景上的微弱描边，圆钮轮廓可见 */
+}
+
+.top-icon {
+  width: 44rpx;
+  height: 44rpx;
+}
+
+/* 闪光灯「开启」态：圆钮描边 / 底色 / 微光同步切为琥珀色（与关闭态的纯黑描边一眼可辨）。
+   本页为 WebView 渲染，box-shadow 可用；底色用低不透明度叠加避免盖住琥珀色闪电 */
+.circle-btn.circle-btn-on {
+  background: rgba(255, 205, 60, 0.16);
+  border-color: rgba(255, 205, 60, 0.85);
+  box-shadow: 0 0 16rpx rgba(255, 205, 60, 0.35);
+}
+
+.nav-hover {
+  opacity: 0.75;
+}
+
+/* ==== 实时取景预览：占除去顶条 / 倍率条 / 底部控制区后的**全部**剩余高度（M53 起为全页最大区块） ==== */
+/* 取景区：相机铺满，相框叠加层浮在其上 */
+.preview-wrap {
+  position: relative;
+  flex: 1;
+  width: 100%;
+  min-height: 0;
+}
+
+.camera-preview {
+  width: 100%;
+  height: 100%;
+}
+
+/* 取景画面里的相框实时预览：与选择面板共用 .frame-deco 装饰。
+   官方已明确「原生组件均已支持同层渲染」，显式 position + 正 z-index 即可盖在
+   `<camera>` 之上（口径同 README 11.3 第 17 条）；pointer-events:none 保证不影响取景。
+   四边定位必须写全（left/top/right/bottom）—— 叠加层不参与普通流，尺寸完全由它们决定。 */
+.vf-frame {
+  position: absolute;
+  left: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 2;
+  pointer-events: none;
+}
+
+/* ==== 倍率条：三个深灰半透明圆形按钮，点中哪个数字就在哪个数字后加 ×（默认 1×） ==== */
+.zoom-strip {
+  flex-shrink: 0;
+  height: 118rpx;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: #000000;
+}
+
+.zoom-btn {
+  width: 78rpx;
+  height: 78rpx;
+  margin: 0 20rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: rgba(28, 28, 30, 0.55); /* 深灰半透明圆形 */
+  color: #ffffff;
+  font-size: 28rpx;
+  font-weight: 600;
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+
+.zoom-btn-active {
+  background: #ffffff;
+  color: #000000;
+  transform: scale(1.18);
+}
+
+/* ==== 底部控制区：纯黑，**高度由内容撑开**（不再写死 35%）====
+   原「创意 / 原生 / 风格」模式行已删除；控制区只剩快门行 + 最底部一排，
+   省下的高度全部归上方 `.preview-wrap`（flex:1），取景区因此成为全页最大区块（M53）。 */
+.controls {
+  flex-shrink: 0;
+  box-sizing: border-box;
+  background: #000000;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 快门区（固定 rpx 高度，不再用百分比）：配合上方倍率条把快门与相框入口整体压到屏幕下部，
+   取景区则拿到全部剩余高度。行高略大于快门直径（178rpx），给「整行下移」留出稳定的余量。 */
+.shutter-row {
+  height: 190rpx;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 0 64rpx;
+  box-sizing: border-box;
+}
+
+.side-col {
+  /* 固定宽度：左右两列等宽，快门才会正中对齐（左列是空位占位） */
+  width: 132rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: 32rpx;
+}
+
+/* 左侧占位：原「美颜」入口已移除，这里只占宽度、不渲染内容，保证快门居中 */
+.side-ghost {
+  height: 0;
+}
+
+.side-label {
+  margin-top: 10rpx;
+  font-size: 22rpx;
+  color: #e5e5ea;
+}
+
+/* 已选中相框：文案与缩略图转琥珀色（与闪光灯开启态同一套视觉语言） */
+.side-label-on {
+  color: #ffcd3c;
+  font-weight: 600;
+}
+
+/* 白色填充 + 淡灰细外圈的大号圆形快门 */
+.shutter {
+  width: 178rpx;
+  height: 178rpx;
+  border-radius: 50%;
+  background: rgba(233, 233, 238, 0.85); /* 淡灰细外圈 */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.shutter-inner {
+  width: 148rpx;
+  height: 148rpx;
+  border-radius: 50%;
+  background: #ffffff;
+}
+
+.shutter-hover {
+  opacity: 0.9;
+}
+
+/* 方形圆角缩略图：相框入口（深灰半透明底；未选相框时显示画框图标，选中后显示该相框的迷你预览） */
+.thumb {
+  width: 108rpx;
+  height: 108rpx;
+  box-sizing: border-box;
+  border-radius: 24rpx;
+  border: 2rpx solid rgba(255, 255, 255, 0.5);
+  background: rgba(28, 28, 30, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.thumb-on {
+  border-color: rgba(255, 205, 60, 0.9);
+  background: rgba(255, 205, 60, 0.16);
+  box-shadow: 0 0 16rpx rgba(255, 205, 60, 0.35);
+}
+
+.thumb-frame {
+  width: 62rpx;
+  height: 62rpx;
+}
+
+/* 最底部一排：相册(左) / 拍照(中，白高亮) / 前后翻转(右)。
+   高度由内容（76rpx 图标）与安全区撑开、不写死 —— 写死高度在带底部横条的机型上会把图标压扁
+   （`padding-bottom` 已含 `safe-area-inset-bottom`，box-sizing:border-box 下会直接吃掉行高）。 */
+.bottom-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4rpx 64rpx calc(env(safe-area-inset-bottom) + 16rpx);
+  box-sizing: border-box;
+}
+
+.b-btn {
+  width: 76rpx;
+  height: 76rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.b-icon {
+  width: 58rpx;
+  height: 58rpx;
+}
+
+.b-capture {
+  font-size: 34rpx;
+  font-weight: 600;
+  color: #ffffff;
+  letter-spacing: 6rpx;
+}
+
+/* ================= 相框选择面板（底部弹层）=================
+   预览用 CSS 示意，实际落到画面的绘制由 utils/frames.js 的 drawFrame() 完成；
+   两处共用同一份「以短边为基准」的比例参数（详见该文件注释）。 */
+.fp-mask {
+  position: fixed;
+  left: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  z-index: 90;
+}
+
+.fp-sheet {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 91;
+  background: #1c1c1e;
+  border-radius: 32rpx 32rpx 0 0;
+  padding: 0 24rpx;
+  box-sizing: border-box;
+}
+
+.fp-head {
+  height: 108rpx;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 12rpx;
+}
+
+.fp-title {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #ffffff;
+}
+
+.fp-close {
+  width: 64rpx;
+  height: 64rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.fp-close-icon {
+  width: 36rpx;
+  height: 36rpx;
+  opacity: 0.7;
+}
+
+/* 4 列网格：flex 换行（不用 display:grid —— Skyline 下 grid 不生效，见 README 11.3 第 29 条） */
+.fp-grid {
+  display: flex;
+  flex-wrap: wrap;
+}
+
+.fp-cell {
+  width: 25%;
+  padding: 12rpx 8rpx 20rpx;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.fp-hover {
+  opacity: 0.75;
+}
+
+/* 预览框：短边 150rpx 为基准；transparent 边框占位，选中时只换颜色、不引起布局跳动 */
+.fp-box {
+  position: relative;
+  width: 150rpx;
+  height: 150rpx;
+  border-radius: 10rpx;
+  background: #6b7280; /* 代替照片的灰底，衬出白色相框 */
+  overflow: hidden;
+  box-sizing: border-box;
+  border: 2rpx solid transparent;
+}
+
+.fp-on .fp-box {
+  border-color: #ffcd3c;
+}
+
+.fp-on .fp-name {
+  color: #ffcd3c;
+}
+
+.fp-name {
+  margin-top: 12rpx;
+  font-size: 22rpx;
+  color: #b9b9be;
+}
+
+/* ============ 相框装饰：选择面板预览 + 取景画面叠加 共用 ============
+   这里只描述「相框怎么画」，尺寸、底色与**定位**都由使用方给出（.fp-box / .vf-frame）。
+   所有粗细都按 CSS 变量 `--k`（所在框的短边）等比换算，与 utils/frames.js 的 drawFrame()
+   口径一一对应：面板预览的 --k 是 150rpx（预览框短边），取景叠加的 --k 由 JS 按取景区
+   短边算出（见 camera.js 的 updateFrameK），因此**取景里看到的就是最终成片的比例**，
+   不会出现「预览细、成片粗」。
+
+   ⚠️ 这里**不要写 `position`**：它与调用方的定位声明特异性相同（都是单类选择器），
+   一旦本规则在文件里更靠后会直接覆盖掉 `.vf-frame` 的 `absolute` —— 叠加层会退化成
+   普通块（`right/bottom` 失效、高度被内容撑开、而子元素是绝对定位 → 高度塌成 0，
+   相框完全不显示）。子元素（.frame-bar / .frame-arm）的定位基准由各自父级提供：
+   面板是 `.fp-box { position: relative }`，取景是 `.vf-frame { position: absolute }`。 */
+.frame-deco {
+  --k: 150rpx;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+/* 简约白：0.055k 白框 */
+.frame-deco.s-white {
+  box-shadow: inset 0 0 0 calc(var(--k) * 0.055) #ffffff;
+}
+/* 经典黑：黑框 0.06k + 紧贴内侧的白线 0.02k */
+.frame-deco.s-black {
+  box-shadow: inset 0 0 0 calc(var(--k) * 0.06) #111111,
+    inset 0 0 0 calc(var(--k) * 0.08) rgba(255, 255, 255, 0.92);
+}
+/* 金边：琥珀框 0.05k + 内侧白线 0.015k */
+.frame-deco.s-gold {
+  box-shadow: inset 0 0 0 calc(var(--k) * 0.05) #e8b73a,
+    inset 0 0 0 calc(var(--k) * 0.065) rgba(255, 255, 255, 0.85);
+}
+/* 圆角：白框 + 圆角半径 0.1k */
+.frame-deco.s-rounded {
+  border-radius: calc(var(--k) * 0.1);
+  box-shadow: inset 0 0 0 calc(var(--k) * 0.055) #ffffff;
+}
+/* 虚线：内缩 0.04k 的一圈虚线（线宽同为 0.04k） */
+.frame-deco.s-dashed::after {
+  content: '';
+  position: absolute;
+  left: calc(var(--k) * 0.04);
+  top: calc(var(--k) * 0.04);
+  right: calc(var(--k) * 0.04);
+  bottom: calc(var(--k) * 0.04);
+  border: calc(var(--k) * 0.04) dashed #ffffff;
+  border-radius: calc(var(--k) * 0.05);
+  box-sizing: border-box;
+}
+
+/* 胶片：上下黑条（高 0.14h，随框高自适应）+ 条内等距白色齿孔（宽 0.05k、周期 0.135k） */
+.frame-bar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 14%;
+  background: #111111;
+}
+.frame-bar-top {
+  top: 0;
+}
+.frame-bar-bottom {
+  bottom: 0;
+}
+.frame-bar::after {
+  content: '';
+  position: absolute;
+  left: 5%;
+  right: 5%;
+  top: 50%;
+  height: calc(var(--k) * 0.032);
+  transform: translateY(-50%);
+  /* 单个齿孔用 37% 的实心渐变表达（37% × 0.135k ≈ 0.05k），再横向平铺出等距齿孔 */
+  background-image: linear-gradient(
+    to right,
+    rgba(255, 255, 255, 0.85) 0,
+    rgba(255, 255, 255, 0.85) 37%,
+    rgba(255, 255, 255, 0) 37%
+  );
+  background-size: calc(var(--k) * 0.135) 100%;
+  background-repeat: repeat-x;
+}
+
+/* 四角：四个 L 形括号（臂长 0.2k、线宽 0.045k，与编辑页裁切框同一观感） */
+.frame-arm {
+  position: absolute;
+  width: calc(var(--k) * 0.2);
+  height: calc(var(--k) * 0.2);
+  border: 0 solid #ffffff;
+}
+.frame-arm-tl {
+  left: 0;
+  top: 0;
+  border-top-width: calc(var(--k) * 0.045);
+  border-left-width: calc(var(--k) * 0.045);
+}
+.frame-arm-tr {
+  right: 0;
+  top: 0;
+  border-top-width: calc(var(--k) * 0.045);
+  border-right-width: calc(var(--k) * 0.045);
+}
+.frame-arm-bl {
+  left: 0;
+  bottom: 0;
+  border-bottom-width: calc(var(--k) * 0.045);
+  border-left-width: calc(var(--k) * 0.045);
+}
+.frame-arm-br {
+  right: 0;
+  bottom: 0;
+  border-bottom-width: calc(var(--k) * 0.045);
+  border-right-width: calc(var(--k) * 0.045);
+}
+
+/* 底部安全区（避开 iPhone 底部横条） */
+.fp-safe {
+  height: calc(env(safe-area-inset-bottom) + 24rpx);
+}

@@ -1,0 +1,83 @@
+<!--pages/template/template.wxml-->
+<view class="glow glow-a"></view>
+<view class="glow glow-b"></view>
+
+<view class="page-root" style="padding-top: {{topPadding}}px; padding-bottom: {{tabBarHeight}}px;">
+  <!-- 底部让位由 .page-root 的 padding-bottom（JS 算出的导航栏真实占位）完成，滚动区 flex:1 自动避开 -->
+  <scroll-view class="scrollarea" scroll-y type="list">
+    <view class="page">
+
+      <!-- 搜索栏 -->
+      <view class="search-row">
+        <view class="search-bar">
+          <image class="search-icon" src="{{icons.search}}" mode="aspectFit" />
+          <input class="search-input" value="{{keyword}}" placeholder="搜索模板" placeholder-class="search-placeholder" confirm-type="search" bindinput="onSearchInput" bindconfirm="onSearch" />
+        </view>
+        <text class="search-btn" bindtap="onSearch" hover-class="btn-hover">搜索</text>
+      </view>
+
+      <!-- 分类 Tab -->
+      <scroll-view class="tab-scroll" scroll-x enhanced show-scrollbar="{{false}}">
+        <view class="tab-track">
+          <view
+            class="tab-item {{activeTab === item ? 'tab-active' : ''}}"
+            wx:for="{{tabs}}"
+            wx:key="*this"
+            data-name="{{item}}"
+            bindtap="onTabTap"
+            hover-class="btn-hover"
+          >
+            <text class="tab-text">{{item}}</text>
+            <view class="tab-underline" wx:if="{{activeTab === item}}"></view>
+          </view>
+        </view>
+      </scroll-view>
+
+      <!-- 双列瀑布流 -->
+      <view class="feed" wx:if="{{colLeft.length || colRight.length}}">
+        <view class="feed-col" wx:for="{{[colLeft, colRight]}}" wx:for-item="col" wx:key="index">
+          <view
+            class="card tpl-card"
+            wx:for="{{col}}"
+            wx:key="id"
+            data-path="{{item.file_path}}"
+            bindtap="onTemplateTap"
+            hover-class="card-hover"
+          >
+            <image class="tpl-cover" style="height: {{item.coverH}}rpx;" src="{{item.fullImage}}" mode="aspectFill" lazy-load />
+            <view class="tpl-body">
+              <text class="tpl-name">{{item.name}}</text>
+              <view class="tpl-meta">
+                <view class="tpl-author">
+                  <view class="tpl-avatar">
+                    <image class="tpl-avatar-icon" src="{{icons.user}}" mode="aspectFit" />
+                  </view>
+                  <text class="tpl-author-name">{{item.author}}</text>
+                </view>
+                <!-- 点赞 / 取消点赞：必须用 catchtap —— 卡片外层是 bindtap="onTemplateTap"，
+                     用 bindtap 会连同触发「选图套用模板」（见 template.js onLikeTap） -->
+                <view class="tpl-likes" data-id="{{item.id}}" catchtap="onLikeTap" hover-class="like-hover">
+                  <image class="tpl-heart" src="{{item.liked ? icons.heartFill : icons.heartOutline}}" mode="aspectFit" />
+                  <text class="tpl-likes-num {{item.liked ? 'liked' : ''}}">{{item.likes}}</text>
+                </view>
+              </view>
+            </view>
+          </view>
+        </view>
+      </view>
+      <view wx:elif="{{empty}}" class="feed-empty">
+        <text class="feed-empty-text">{{keyword ? '没有找到相关模板' : '模板准备中'}}</text>
+      </view>
+
+      <view class="bottom-spacer"></view>
+    </view>
+  </scroll-view>
+
+  <!-- 右下 + 悬浮钮：选图空白创作 -->
+  <view class="fab" bindtap="onFabTap" hover-class="fab-hover">
+    <image class="fab-icon" src="{{icons.plus}}" mode="aspectFit" />
+  </view>
+
+  <!-- 底部导航 -->
+  <tab-bar active="template" />
+</view>

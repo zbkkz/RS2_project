@@ -1,0 +1,906 @@
+/* pages/editor/editor.wxss — 图片查看页：沉浸预览 / 查看操作 */
+
+/* 页面根节点背景：保证转场/加载首帧即为纯黑沉浸底色（小程序页面根节点默认白色背景）。
+   注意：**只靠这一层不足以防「图片先上屏、黑幕晚一帧」** —— 页面背景与 canvas 是两层，
+   谁先上屏不受业务代码控制。沉浸预览层的黑幕底另由 canvas 缓冲区补上（editor.js
+   paintBackdrop，只在该层铺，避免盖住编辑层的工具栏）。 */
+page {
+  background: #000000;
+}
+
+.page {
+  position: relative;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-sizing: border-box;
+  background: #000000;
+  /* 分层背景（黑沉浸 ⇄ 浅灰查看）平滑过渡 */
+  transition: background-color 0.3s ease;
+}
+
+/* 分层底色：图片1 纯黑沉浸，图片2 浅灰查看，图片3 编辑层纯黑 */
+.layer-preview {
+  background: #000000;
+}
+.layer-viewer {
+  background: #f7f8fa;
+}
+.layer-edit {
+  background: #000000;
+}
+
+/* 全屏画布：所有层共用同一节点，切层只改绘制视口 */
+.stage {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+}
+/* ⚠️ 不要给 .stage 加背景色：画布是原生组件，视觉上压在普通 DOM 之上，
+   编辑层的头部/底部工具栏正是靠「画布除图片外透明」才看得见 —— 给它铺黑会把工具栏盖住。 */
+
+/* 沉浸层/查看层轻触热区 */
+.stage-tap {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+}
+
+/* 首帧占位图（M63）：与 canvas 同一视口与 aspectFit 口径，canvas 画出第一帧后由 JS 撤掉。
+   刻意不写 z-index（保持 auto）：编辑层的触摸热区是 z-index 2/3，仍在它之上而不被挡；
+   pointer-events: none 保证它不抢手势。 */
+.anchor-photo {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+/* 隐形锚点：占满头部与底栏之间的剩余空间，用于量取绘制视口 */
+.anchor {
+  position: relative;
+  z-index: 0;
+  flex: 1;
+  width: 100%;
+}
+
+/* ================= 第二层：查看操作栏（图片2） ================= */
+.viewer-head {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  height: 108rpx;
+  padding: 0 24rpx;
+  box-sizing: content-box;
+  /* 实色底遮住图片顶部，作浮层盖在画布之上（不挤压画布视口，图片不移动） */
+  background: #f7f8fa;
+  animation: viewerHeadIn 0.32s ease both;
+}
+.vh-back,
+.vh-album {
+  width: 72rpx;
+  height: 72rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.vh-album {
+  margin-left: auto;
+}
+.vh-ic {
+  width: 46rpx;
+  height: 46rpx;
+}
+.vh-title {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  margin-left: 8rpx;
+}
+.vh-date {
+  font-size: 40rpx;
+  font-weight: 600;
+  color: #16161a;
+  line-height: 1.2;
+}
+.vh-time {
+  margin-top: 4rpx;
+  font-size: 26rpx;
+  color: #8e8e93;
+  line-height: 1.2;
+}
+
+.viewer-bar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  height: 136rpx;
+  padding-bottom: env(safe-area-inset-bottom);
+  background: #ffffff;
+  border-top: 1rpx solid #ebedf0;
+  box-sizing: content-box;
+  /* 浮层盖在画布之上，不挤压画布视口 */
+  animation: viewerBarIn 0.32s ease both;
+}
+/* 上下导航栏入场：从屏幕外滑入并淡入 */
+@keyframes viewerHeadIn {
+  from {
+    transform: translateY(-120%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+@keyframes viewerBarIn {
+  from {
+    transform: translateY(120%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+.vb-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+.vb-ic {
+  width: 48rpx;
+  height: 48rpx;
+}
+.vb-label {
+  margin-top: 10rpx;
+  font-size: 24rpx;
+  color: #1f1f1f;
+}
+
+.placeholder {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.placeholder-text {
+  color: #8a93a6;
+  font-size: 30rpx;
+}
+
+/* ================= 第三层：图片编辑（纯黑 UI） ================= */
+
+/* 顶部：取消 / 保存 */
+.edit-head {
+  position: relative;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 88rpx;
+  padding: 0 44rpx;
+  box-sizing: content-box;
+  animation: editFadeIn 0.24s ease both;
+}
+.eh-btn {
+  padding: 12rpx 8rpx;
+  font-size: 32rpx;
+  color: #6b6b70;
+}
+.eh-cancel {
+  color: #ffffff;
+}
+.eh-on {
+  color: #ffffff;
+  font-weight: 600;
+}
+
+/* 裁切旋转 / 滤镜模式：顶部居中标题（替代「取消 / 保存」行） */
+.mode-head {
+  position: relative;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 88rpx;
+  box-sizing: content-box;
+  animation: editFadeIn 0.2s ease both;
+}
+.mode-head-title {
+  font-size: 34rpx;
+  font-weight: 600;
+  color: #ffffff;
+  letter-spacing: 2rpx;
+}
+
+/* 绘制触摸层：铺满绘制视口，仅对应面板开启时渲染（涂鸦 / 马赛克 / 文字拖动） */
+.doodle-touch,
+.paint-touch {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 2;
+}
+
+/* 裁切框：四角白色括号与拖动九宫格均由 drawCropOverlay() 画在 canvas 上
+   （canvas 为原生组件，DOM 浮层会被盖住，故这里没有对应的样式） */
+
+/* 裁切框操作层：铺满绘制视口，拦截触摸用于缩放/移位 */
+.crop-touch {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 3;
+}
+
+/* 撤销 / 重做 / 镜像行 */
+.eb-row {
+  display: flex;
+  align-items: center;
+  height: 96rpx;
+  padding: 0 32rpx;
+  animation: editFadeIn 0.24s ease both;
+}
+.eb-btn {
+  width: 88rpx;
+  height: 88rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.eb-ic {
+  width: 44rpx;
+  height: 44rpx;
+}
+.eb-dis {
+  opacity: 0.28;
+}
+.eb-space {
+  flex: 1;
+}
+
+/* 工具面板 */
+.panel {
+  padding: 8rpx 32rpx 16rpx;
+  animation: editFadeIn 0.2s ease both;
+}
+.p-scroll {
+  width: 100%;
+  white-space: nowrap;
+}
+.p-row {
+  display: flex;
+  align-items: center;
+  min-height: 76rpx;
+}
+
+/* 风格胶囊行（AI 功能栏「风格迁移」）：左右内缩与其它功能栏内容对齐 */
+.ratio-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  padding: 16rpx 32rpx 0;
+}
+.chip {
+  flex-shrink: 0;
+  margin-right: 16rpx;
+  padding: 10rpx 28rpx;
+  border-radius: 999rpx;
+  background: #2b2b2e;
+  font-size: 24rpx;
+  color: #d1d1d6;
+}
+.chip-on {
+  background: #ffcd3c;
+  color: #111111;
+  font-weight: 600;
+}
+
+/* 裁切旋转动作 */
+.act-row {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-top: 8rpx;
+}
+.act-btn {
+  margin: 12rpx 12rpx 0 0;
+  padding: 12rpx 28rpx;
+  border-radius: 999rpx;
+  background: #2b2b2e;
+  font-size: 24rpx;
+  color: #ffffff;
+}
+.act-primary {
+  background: #ffcd3c;
+  color: #111111;
+  font-weight: 600;
+}
+.act-btn-lg {
+  flex-shrink: 0;
+  margin-top: 0;
+  padding: 14rpx 36rpx;
+}
+
+/* 文字面板：输入框 + 字号示例字 */
+.text-input {
+  flex: 1;
+  height: 68rpx;
+  padding: 0 26rpx;
+  margin-right: 16rpx;
+  border-radius: 34rpx;
+  background: #2b2b2e;
+  font-size: 26rpx;
+  color: #ffffff;
+}
+.text-ph {
+  color: #6e6e73;
+}
+.size-txt {
+  color: #ffffff;
+  line-height: 1;
+}
+.panel-tip {
+  font-size: 22rpx;
+  color: #8e8e93;
+}
+
+/* 贴纸面板：分类胶囊行（与块级/风格胶囊同一套 .chip 样式）+ 横向贴纸列表 */
+.stk-cats {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+}
+.stk-scroll {
+  width: 100%;
+  white-space: nowrap;
+  padding: 8rpx 0 4rpx;
+}
+.stk-list {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+}
+.stk-item {
+  flex-shrink: 0;
+  width: 108rpx;
+  height: 108rpx;
+  margin-right: 16rpx;
+  border-radius: 16rpx;
+  background: #2b2b2e;
+  border: 2rpx solid transparent;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.stk-hover {
+  background: #3a3a3c;
+  border-color: #ffcd3c;
+}
+.stk-img {
+  width: 88rpx;
+  height: 88rpx;
+}
+
+/* ================= 滤镜功能栏 ================= */
+
+/* 滤镜分类 Tab：当前分类为琥珀色 */
+.flt-cat-scroll {
+  width: 100%;
+  white-space: nowrap;
+  padding: 18rpx 0 6rpx;
+}
+.flt-cats {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  padding: 0 32rpx;
+}
+.flt-cat {
+  flex-shrink: 0;
+  margin-right: 46rpx;
+  font-size: 28rpx;
+  color: #9a9aa0;
+}
+.flt-cat-on {
+  color: #ffcd3c;
+  font-weight: 600;
+}
+
+/* 滤镜预览列表：真实图片 + CSS filter 实时呈现 */
+.flt-list-scroll {
+  width: 100%;
+  white-space: nowrap;
+  padding: 16rpx 0 4rpx;
+}
+.flt-list {
+  display: flex;
+  flex-direction: row;
+  padding: 0 32rpx;
+}
+.flt-item {
+  flex-shrink: 0;
+  width: 148rpx;
+  margin-right: 18rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.flt-thumb {
+  width: 140rpx;
+  height: 140rpx;
+  border-radius: 14rpx;
+  overflow: hidden;
+  box-sizing: border-box;
+  border: 4rpx solid transparent;
+  background: #1c1c1e;
+}
+.flt-thumb-on {
+  border-color: #ffcd3c;
+}
+.flt-thumb-img {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.flt-name {
+  margin-top: 12rpx;
+  font-size: 22rpx;
+  color: #9a9aa0;
+}
+.flt-name-on {
+  color: #ffffff;
+  font-weight: 600;
+}
+
+/* 面板内参数名（马赛克面板沿用） */
+.adj-name {
+  width: 120rpx;
+  font-size: 26rpx;
+  color: #d1d1d6;
+}
+
+/* ================= 增强功能栏 ================= */
+
+/* 单项滑杆行：居中为默认值，向左减弱 / 向右增强；右侧为当前数值 */
+.adj-slider-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  padding: 24rpx 32rpx 4rpx;
+}
+.adj-slider-main {
+  flex: 1;
+}
+.adj-value {
+  width: 84rpx;
+  margin-left: 12rpx;
+  text-align: right;
+  font-size: 24rpx;
+  color: #ffcd3c;
+}
+
+/* 参数项：横向滚动，选中为琥珀色方块（与比例预设同一视觉语言） */
+.adj-item-scroll {
+  width: 100%;
+  white-space: nowrap;
+  padding: 18rpx 0 4rpx;
+}
+.adj-items {
+  display: flex;
+  flex-direction: row;
+  padding: 0 32rpx;
+}
+.adj-item {
+  flex-shrink: 0;
+  width: 134rpx;
+  height: 126rpx;
+  margin-right: 16rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border-radius: 18rpx;
+  background: #2b2b2e;
+}
+.adj-item-on {
+  background: #ffcd3c;
+}
+.adj-item-ic {
+  width: 46rpx;
+  height: 46rpx;
+}
+.adj-item-name {
+  margin-top: 10rpx;
+  font-size: 22rpx;
+  color: #a1a1a6;
+}
+.adj-item-on .adj-item-name {
+  color: #111111;
+  font-weight: 600;
+}
+
+/* 涂鸦调色板 */
+.dot {
+  width: 56rpx;
+  height: 56rpx;
+  margin-right: 20rpx;
+  border-radius: 50%;
+  border: 3rpx solid rgba(255, 255, 255, 0.18);
+  box-sizing: border-box;
+}
+.dot-on {
+  border-color: #ffcd3c;
+  transform: scale(1.12);
+}
+.size-item {
+  width: 64rpx;
+  height: 64rpx;
+  margin-right: 16rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: #2b2b2e;
+}
+.size-on {
+  background: #3a3a3c;
+  border: 2rpx solid #ffcd3c;
+}
+.size-dot {
+  border-radius: 50%;
+  background: #ffffff;
+}
+
+/* 工具行：深灰圆形底 + 白色图标 + 文字标签 */
+.tool-row {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 8rpx 36rpx 0;
+  animation: editFadeIn 0.24s ease both;
+}
+.tool-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.tool-btn {
+  width: 112rpx;
+  height: 112rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: #2b2b2e;
+  border: 2rpx solid transparent;
+  box-sizing: border-box;
+}
+.tool-on {
+  background: #3a3a3c;
+  border-color: #ffcd3c;
+}
+.tool-dis {
+  opacity: 0.4;
+}
+.tool-ic {
+  width: 52rpx;
+  height: 52rpx;
+}
+.tool-label {
+  margin-top: 12rpx;
+  font-size: 22rpx;
+  color: #d1d1d6;
+}
+
+/* 基础工具行共 8 个，一屏放不下 → 横向滚动查看：
+   圆形底 / 图标 / 字号全部沿用原尺寸，向左滑即可看到被遮挡的工具。
+   （scroll-view 需 enable-flex 才能让内部 flex 行按内容宽度撑开、从而可滚动） */
+.tool-scroll {
+  width: 100%;
+  white-space: nowrap;
+}
+.tool-row-scroll {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  padding: 8rpx 32rpx 0;
+}
+.tool-row-scroll .tool-item {
+  flex: none;
+  width: 132rpx;
+  margin-right: 8rpx;
+}
+
+/* 底部 Tab：基础 / AI创作 */
+.tab-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  height: 96rpx;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+.tab-item {
+  margin: 0 48rpx;
+  padding: 16rpx 0;
+  font-size: 30rpx;
+  color: #ffffff;
+}
+.tab-on {
+  color: #ffcd3c;
+  font-weight: 600;
+}
+/* 按压反馈：点击时立即变暗，可据此确认事件已生效 */
+.tab-hover {
+  opacity: 0.6;
+}
+
+@keyframes editFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(24rpx);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ================= 裁切旋转功能栏 ================= */
+
+/* 普通底部工具区：进入裁切旋转时整体下移隐退 */
+.edit-bottom {
+  /* 必须显式定位并给出正 z-index：canvas 是原生组件（.stage 为 position:absolute; z-index:0），
+     静态（z-index:auto）元素会被它盖住，表现为「按钮看得见但点不动」——
+     本页其余浮层（.edit-head/.mode-head = 3、各触摸层 = 2/3、.placeholder = 6）都是这么做的 */
+  position: relative;
+  z-index: 1;
+  transition: transform 0.24s cubic-bezier(0.4, 0, 1, 1), opacity 0.24s ease;
+}
+.edit-bottom-out {
+  transform: translateY(120%);
+  opacity: 0;
+}
+
+/* 裁切旋转 / 滤镜 / 增强 / AI 功能栏：上滑显现 / 下移退场 */
+.mode-bottom {
+  /* 同 .edit-bottom：必须显式定位 + 正 z-index，否则栏内的 ×/✓、滑杆、胶囊等静默点不动 */
+  position: relative;
+  z-index: 1;
+  padding-bottom: env(safe-area-inset-bottom);
+  animation: cropUp 0.3s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.mode-bottom-out {
+  animation: cropDown 0.22s ease both;
+}
+/* 直达入口（首页 AI 卡片带 ai= 参数）：首帧就已经在功能栏里，跳过「从下往上滑入」的进场动画。
+   否则页面刚出现时会有整块深色面板从底部盖住图片，观感就是「图片闪一下、再被黑幕盖住」。
+   从工具行手动进入时 directEntry 为 false，仍播放正常动画（见 editor.js 的 enterAi）。 */
+.mode-bottom-still {
+  animation: none;
+}
+@keyframes cropUp {
+  from {
+    transform: translateY(100%);
+    opacity: 0.25;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+@keyframes cropDown {
+  from {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+}
+
+/* 角度微调行：左镜像 / 中标尺 / 右旋转 */
+.cro-slider-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  padding: 4rpx 28rpx 0;
+}
+.cro-side-btn {
+  width: 76rpx;
+  height: 76rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+}
+.cro-side-ic {
+  width: 46rpx;
+  height: 46rpx;
+}
+.mode-hover {
+  opacity: 0.55;
+}
+
+/* 角度刻度盘（angle-ruler 组件）在行内的占位：刻度与游标全部由组件内部 canvas 绘制 */
+.cro-ruler {
+  flex: 1;
+  height: 120rpx;
+  margin: 0 8rpx;
+}
+
+/* 比例预设：横向滚动胶囊卡片 */
+.cro-ratio-scroll {
+  width: 100%;
+  white-space: nowrap;
+  padding: 18rpx 0 4rpx;
+}
+.cro-ratios {
+  display: flex;
+  flex-direction: row;
+  padding: 0 32rpx;
+}
+.cro-ratio {
+  flex-shrink: 0;
+  width: 134rpx;
+  height: 126rpx;
+  margin-right: 16rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border-radius: 18rpx;
+  background: #2b2b2e;
+}
+.cro-ratio-on {
+  background: #ffcd3c;
+}
+.cro-ratio-ic {
+  width: 46rpx;
+  height: 46rpx;
+}
+.cro-ratio-name {
+  margin-top: 10rpx;
+  font-size: 22rpx;
+  color: #a1a1a6;
+}
+.cro-ratio-on .cro-ratio-name {
+  color: #111111;
+  font-weight: 600;
+}
+
+/* 底部：取消 × / 确认 ✓（裁切与滤镜共用） */
+.mode-bar {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  height: 104rpx;
+  padding: 0 44rpx;
+  box-sizing: content-box;
+}
+.mode-bar-btn {
+  width: 88rpx;
+  height: 88rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.mode-bar-ic {
+  width: 52rpx;
+  height: 52rpx;
+}
+
+/* ================= AI 功能栏（智能抠图 / 风格迁移 / 画质修复 / AI美颜） =================
+   骨架完全复用裁切旋转 / 滤镜 / 增强的 .mode-bottom / .mode-head / .mode-bar，
+   这里只补「能力说明卡」与「执行说明」两块内容的样式 */
+
+/* 能力说明卡：深色卡片 +「图标 + 名称」一行 + 一句话说明 + 处理要点胶囊 */
+.ai-card {
+  margin: 20rpx 32rpx 0;
+  padding: 24rpx 28rpx;
+  border-radius: 20rpx;
+  background: #1c1c1e;
+  border: 2rpx solid rgba(255, 255, 255, 0.06);
+}
+.ai-card-head {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+}
+.ai-card-ic {
+  width: 44rpx;
+  height: 44rpx;
+  margin-right: 14rpx;
+}
+.ai-card-name {
+  font-size: 30rpx;
+  font-weight: 600;
+  color: #ffffff;
+  letter-spacing: 1rpx;
+}
+.ai-card-desc {
+  display: block;
+  margin-top: 14rpx;
+  font-size: 24rpx;
+  color: #a1a1a6;
+  line-height: 1.6;
+}
+.ai-card-tips {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  margin-top: 8rpx;
+}
+.ai-tip {
+  margin: 12rpx 12rpx 0 0;
+  padding: 8rpx 20rpx;
+  border-radius: 999rpx;
+  background: #2b2b2e;
+  font-size: 22rpx;
+  color: #d1d1d6;
+}
+
+/* 今日额度（GET /api/ai/quota 的只读查询结果；查询失败时该行不渲染） */
+.ai-quota {
+  padding: 14rpx 32rpx 0;
+}
+.ai-quota-text {
+  font-size: 22rpx;
+  color: #8e8e93;
+}
+
+/* 执行说明：点 ✓ 才开始处理，结果替换底图并自动入「我的作品」 */
+.ai-note {
+  padding: 18rpx 32rpx 0;
+}
+.ai-note-text {
+  font-size: 22rpx;
+  color: #6b6b70;
+  line-height: 1.5;
+}
+/* 不可提交原因（今日额度用完 / 未配置密钥）：用琥珀色与前文正文区分 */
+.ai-note-warn {
+  color: #ffcd3c;
+}
+
+/* 处理中：确认按钮置灰（与工具行的 .tool-dis 同一语义） */
+.mode-dis {
+  opacity: 0.28;
+}
