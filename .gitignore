@@ -12,9 +12,35 @@ env/
 # ---------- 环境变量与密钥 ----------
 .env
 .env.*
+*.env
 !.env.example
 *.pem
 *.key
+*.crt
+*.p12
+*.pfx
+*.jks
+*.keystore
+*.secret
+id_rsa
+id_rsa.*
+id_ed25519
+id_ed25519.*
+.netrc
+.npmrc
+.pypirc
+# 云厂商 / CI 凭证
+credentials.json
+service-account*.json
+*-credentials.json
+.aws/
+.gcp/
+.docker/config.json
+# 本地数据库导出（可能含真实用户与密码哈希）
+*.sql
+*.dump
+*.sqlite
+*.db
 
 # ---------- 日志与临时文件 ----------
 *.log

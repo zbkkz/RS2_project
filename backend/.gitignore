@@ -9,8 +9,26 @@ venv/
 .venv/
 env/
 
-# 环境变量
+# 环境变量（含真实密钥，任何情况下不入库）
 .env
+.env.*
+*.env
+!.env.example
+
+# 密钥与凭证
+*.pem
+*.key
+*.crt
+*.p12
+id_rsa*
+credentials.json
+service-account*.json
+
+# 本地数据库导出（可能含真实用户与密码哈希）
+*.sql
+*.dump
+*.sqlite
+*.db
 
 # IDE
 .idea/
